@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ChargingSession extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'charge_point_id',
+        'start_time',
+        'end_time',
+        'kwh_consumed',
+        'total_cost',
+        'status',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function chargePoint()
+    {
+        return $this->belongsTo(ChargePoint::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'session_id');
+    }
+
+    public function meterValues()
+    {
+        return $this->hasMany(MeterValue::class, 'session_id');
+    }
+}
