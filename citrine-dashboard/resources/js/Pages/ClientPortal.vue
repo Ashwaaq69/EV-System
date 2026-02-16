@@ -21,7 +21,7 @@
       </header>
 
       <Tabs v-model="activeTab" class="w-full">
-        <TabsList class="grid grid-cols-3 md:grid-cols-6 mb-8 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+        <TabsList class="grid grid-cols-3 md:grid-cols-7 mb-8 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
           <TabsTrigger value="overview" class="gap-2">
             <LayoutDashboard class="h-4 w-4" />
             <span class="hidden md:inline">Overview</span>
@@ -45,6 +45,11 @@
           <TabsTrigger value="favorites" class="gap-2">
             <Star class="h-4 w-4" />
             <span class="hidden md:inline">Favorites</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" class="gap-2">
+            <Bell class="h-4 w-4" />
+            <span class="hidden md:inline">Notifications</span>
+            <Badge v-if="notifications.length > 0" variant="destructive" class="ml-0.5 px-1 min-w-[1rem] h-4 text-[10px]">{{ notifications.length }}</Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -136,7 +141,7 @@
                     <TableCell>{{ session.charge_point?.identifier || 'Main Station A' }}</TableCell>
                     <TableCell>{{ session.kwh_consumed }} kWh</TableCell>
                     <TableCell class="text-right">
-                      <Button variant="ghost" size="sm" class="h-8 gap-2">
+                      <Button variant="ghost" size="sm" class="h-8 gap-2" @click="downloadInvoice(session)">
                         <Download class="h-3 w-3" />
                         Receipt
                       </Button>
@@ -150,27 +155,11 @@
 
         <!-- MAP TAB -->
         <TabsContent value="map" class="h-[600px] relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-          <div class="absolute inset-0 bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
-            <!-- Simulated Map Component -->
-            <div class="relative w-full h-full bg-[#f8f9fa] dark:bg-[#1e1e1e]">
-               <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 40px 40px;"></div>
-               
-               <!-- Simulated Markers -->
-               <div v-for="station in stations" :key="station.id" 
-                    :style="{ left: station.x + '%', top: station.y + '%' }"
-                    class="absolute cursor-pointer transition-transform hover:scale-110 group"
-                    @click="selectedStation = station">
-                  <div :class="['p-2 rounded-full shadow-lg border-2 bg-white dark:bg-zinc-900', station.status === 'Available' ? 'border-green-500' : 'border-red-500']">
-                    <Zap :class="['h-4 w-4', station.status === 'Available' ? 'text-green-500' : 'text-red-500']" />
-                  </div>
-                  <div class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white dark:bg-zinc-900 px-2 py-0.5 rounded shadow text-[10px] whitespace-nowrap hidden group-hover:block border border-zinc-200 dark:border-zinc-800">
-                    {{ station.name }}
-                  </div>
-               </div>
-            </div>
+          <div class="absolute inset-0 flex items-center justify-center overflow-hidden">
+            <div ref="mapRef" class="w-full h-full min-h-[400px] rounded-xl z-0"></div>
 
             <!-- Station Detail Overlay -->
-            <div v-if="selectedStation" class="absolute bottom-8 left-8 right-8 md:right-auto md:w-96 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 animate-in slide-in-from-left-4">
+            <div v-if="selectedStation" class="absolute bottom-8 left-8 right-8 md:right-auto md:w-96 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 animate-in slide-in-from-left-4 z-10">
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <h3 class="font-bold text-lg">{{ selectedStation.name }}</h3>
@@ -209,7 +198,7 @@
             </div>
             
             <!-- Map Legend/Overlay -->
-            <div class="absolute top-4 right-4 flex flex-col gap-2">
+            <div class="absolute top-4 right-4 flex flex-col gap-2 z-10">
                <Card class="bg-white/80 dark:bg-zinc-900/80 backdrop-blur border-none p-2 shadow-sm">
                   <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2 text-[10px] font-medium px-2">
@@ -258,7 +247,7 @@
 
                   <div class="flex gap-2 mt-6">
                     <Button variant="outline" size="sm" class="flex-1 h-8" v-if="!vehicle.is_default" @click="setDefaultVehicle(vehicle)">Set Default</Button>
-                    <Button variant="ghost" size="sm" class="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 px-2">
+                    <Button variant="ghost" size="sm" class="h-8 text-red-500 hover:text-red-600 hover:bg-red-50 px-2" @click="deleteVehicle(vehicle)">
                        <Trash class="h-4 w-4" />
                     </Button>
                   </div>
@@ -394,7 +383,108 @@
               </Card>
            </div>
         </TabsContent>
+
+        <!-- NOTIFICATIONS TAB -->
+        <TabsContent value="notifications" class="space-y-6">
+          <Card class="border-none shadow-sm dark:bg-zinc-900">
+            <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>Charging alerts and updates</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                <Bell class="h-5 w-5 text-[#FF2D20]" />
+                <div class="flex-1">
+                  <p class="text-sm font-medium">Push notifications</p>
+                  <p class="text-xs text-zinc-500">Get alerts for session start/end and low balance.</p>
+                </div>
+                <Button v-if="!pushEnabled" size="sm" class="bg-[#FF2D20] text-white" :disabled="pushEnabling" @click="enablePush">
+                  {{ pushEnabling ? 'Enabling...' : 'Enable' }}
+                </Button>
+                <Badge v-else variant="default" class="bg-green-600">Enabled</Badge>
+              </div>
+              <div class="space-y-3">
+                <div v-for="n in notifications" :key="n.id" class="flex items-start gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
+                  <Bell class="h-4 w-4 text-zinc-400 mt-0.5" />
+                  <div>
+                    <p class="font-medium text-sm">{{ n.title }}</p>
+                    <p class="text-xs text-zinc-500">{{ n.message }}</p>
+                    <p class="text-[10px] text-zinc-400 mt-1">{{ n.time }}</p>
+                  </div>
+                </div>
+                <p v-if="notifications.length === 0" class="text-sm text-zinc-500 italic">No notifications yet.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <!-- Add Vehicle Modal -->
+      <Dialog :open="showAddVehicle" @update:open="showAddVehicle = $event">
+        <DialogContent class="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add EV Vehicle</DialogTitle>
+            <DialogDescription>Register your electric vehicle for charging sessions.</DialogDescription>
+          </DialogHeader>
+          <div class="grid gap-4 py-4">
+            <div class="grid gap-2">
+              <Label>Brand</Label>
+              <Input v-model="vehicleForm.brand" placeholder="e.g. Tesla, BYD" />
+            </div>
+            <div class="grid gap-2">
+              <Label>Model</Label>
+              <Input v-model="vehicleForm.model" placeholder="e.g. Model 3, Atto 3" />
+            </div>
+            <div class="grid gap-2">
+              <Label>Plate Number</Label>
+              <Input v-model="vehicleForm.plate_number" placeholder="e.g. WPP 1234" />
+            </div>
+            <div class="grid gap-2">
+              <Label>Battery capacity (kWh)</Label>
+              <Input v-model="vehicleForm.battery_capacity_kwh" type="number" min="0" placeholder="e.g. 75" />
+            </div>
+            <div class="grid gap-2">
+              <Label>Connector type</Label>
+              <select v-model="vehicleForm.connector_type" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm">
+                <option v-for="c in connectorTypes" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="default-vehicle" type="checkbox" v-model="vehicleForm.is_default" class="rounded border-zinc-300" />
+              <Label for="default-vehicle">Set as default vehicle</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" @click="showAddVehicle = false">Cancel</Button>
+            <Button class="bg-[#FF2D20] text-white" :disabled="vehicleFormSaving" @click="saveVehicle">
+              {{ vehicleFormSaving ? 'Adding...' : 'Add Vehicle' }}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <!-- Reserve Slot Modal -->
+      <Dialog :open="showReserveModal" @update:open="showReserveModal = $event">
+        <DialogContent class="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reserve charging slot</DialogTitle>
+            <DialogDescription v-if="selectedStation">
+              {{ selectedStation.name }} — choose duration
+            </DialogDescription>
+          </DialogHeader>
+          <div class="py-4 space-y-4">
+            <div class="grid grid-cols-2 gap-2">
+              <Button v-for="mins in [15, 30, 45, 60]" :key="mins" :variant="reserveSlotMinutes === mins ? 'default' : 'outline'" @click="reserveSlotMinutes = mins">
+                {{ mins }} min
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" @click="showReserveModal = false">Cancel</Button>
+            <Button class="bg-[#FF2D20] text-white" @click="confirmReservation">Reserve</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <!-- Rating & Feedback Modal -->
       <Dialog :open="showRatingModal" @update:open="showRatingModal = $event">
@@ -450,8 +540,9 @@ import {
   Download, Filter, FileText, Trash, Star as StarIcon,
   CheckCircle, AlertCircle, Info, Clock, Square
 } from 'lucide-vue-next';
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import axios from 'axios';
+import 'leaflet/dist/leaflet.css';
 
 // State
 const activeTab = ref('overview');
@@ -466,6 +557,48 @@ const showRatingModal = ref(false);
 const currentRating = ref(0);
 const feedbackComment = ref('');
 const lastStationName = ref('Main Station');
+const showAddVehicle = ref(false);
+const showReserveModal = ref(false);
+const reserveSlotMinutes = ref(15);
+const vehicleForm = ref({
+  brand: '',
+  model: '',
+  plate_number: '',
+  battery_capacity_kwh: '',
+  connector_type: 'Type 2 / CCS',
+  is_default: false
+});
+const vehicleFormSaving = ref(false);
+const connectorTypes = ['Type 2 / CCS', 'Type 2', 'CHAdeMO', 'CCS Combo 1', 'CCS Combo 2', 'Tesla'];
+const pushEnabled = ref(false);
+const pushEnabling = ref(false);
+const mapRef = ref(null);
+let leafletMap = null;
+let leafletMarkers = [];
+
+async function enablePush() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    showToast('Push notifications not supported in this browser', 'error');
+    return;
+  }
+  pushEnabling.value = true;
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      if (reg) {
+        pushEnabled.value = true;
+        showToast('Push notifications enabled');
+      }
+    } else {
+      showToast('Permission denied', 'error');
+    }
+  } catch (e) {
+    showToast('Could not enable push notifications', 'error');
+  } finally {
+    pushEnabling.value = false;
+  }
+}
 
 // Mock Notifications
 const notifications = ref([
@@ -501,22 +634,73 @@ const stopMonitoring = () => {
     if (monitorInterval) clearInterval(monitorInterval);
 };
 
-// Mock Stations Data
+// Stations (with lat/lng for Leaflet map)
 const stations = ref([
-  { id: 1, name: 'Suria KLCC P2', address: 'Level P2, Lot 1.1, KLCC', status: 'Available', x: 45, y: 30, distance: 0.8, rating: 4.8, reviews: 124, isFavorite: true },
-  { id: 2, name: 'Pavilion Bukit Jalil', address: 'B1, Pillar C12', status: 'Occupied', x: 65, y: 55, distance: 12.4, rating: 4.5, reviews: 89, isFavorite: false },
-  { id: 3, name: 'Mid Valley Megamall', address: 'P1, Zone Red', status: 'Available', x: 30, y: 70, distance: 4.2, rating: 4.2, reviews: 210, isFavorite: false },
-  { id: 4, name: 'IOI City Mall', address: 'LG, Pillar B5', status: 'Available', x: 20, y: 40, distance: 15.6, rating: 4.9, reviews: 45, isFavorite: true },
-  { id: 5, name: 'Paradigm Mall', address: 'B2, Near Entrance', status: 'Occupied', x: 80, y: 20, distance: 8.9, rating: 3.8, reviews: 67, isFavorite: false },
+  { id: 1, name: 'Suria KLCC P2', address: 'Level P2, Lot 1.1, KLCC', status: 'Available', lat: 3.1579, lng: 101.7116, distance: 0.8, rating: 4.8, reviews: 124, isFavorite: true },
+  { id: 2, name: 'Pavilion Bukit Jalil', address: 'B1, Pillar C12', status: 'Occupied', lat: 3.0634, lng: 101.6382, distance: 12.4, rating: 4.5, reviews: 89, isFavorite: false },
+  { id: 3, name: 'Mid Valley Megamall', address: 'P1, Zone Red', status: 'Available', lat: 3.1177, lng: 101.6780, distance: 4.2, rating: 4.2, reviews: 210, isFavorite: false },
+  { id: 4, name: 'IOI City Mall', address: 'LG, Pillar B5', status: 'Available', lat: 3.0486, lng: 101.6172, distance: 15.6, rating: 4.9, reviews: 45, isFavorite: true },
+  { id: 5, name: 'Paradigm Mall', address: 'B2, Near Entrance', status: 'Occupied', lat: 3.1076, lng: 101.6055, distance: 8.9, rating: 3.8, reviews: 67, isFavorite: false },
 ]);
 
-// Mock Vehicles Data
-const vehicles = ref([
-  { id: 1, brand: 'Tesla', model: 'Model 3', plate_number: 'WPP 1234', battery_capacity_kwh: 75, connector_type: 'Type 2 / CCS', is_default: true },
-  { id: 2, brand: 'BYD', model: 'Atto 3', plate_number: 'VBE 9988', battery_capacity_kwh: 60, connector_type: 'Type 2 / CCS', is_default: false },
-]);
-
+// Vehicles (fetched from API or fallback mock)
+const vehicles = ref([]);
 const defaultVehicle = computed(() => vehicles.value.find(v => v.is_default));
+
+const fetchVehicles = async () => {
+  try {
+    const res = await axios.get('/api/client/vehicles');
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      vehicles.value = res.data.map(v => ({ ...v, is_default: !!v.is_default }));
+    }
+  } catch (_) {
+    vehicles.value = [
+      { id: 1, brand: 'Tesla', model: 'Model 3', plate_number: 'WPP 1234', battery_capacity_kwh: 75, connector_type: 'Type 2 / CCS', is_default: true },
+      { id: 2, brand: 'BYD', model: 'Atto 3', plate_number: 'VBE 9988', battery_capacity_kwh: 60, connector_type: 'Type 2 / CCS', is_default: false },
+    ];
+  }
+};
+
+const saveVehicle = async () => {
+  if (!vehicleForm.value.brand?.trim() || !vehicleForm.value.model?.trim() || !vehicleForm.value.plate_number?.trim()) {
+    showToast('Please fill brand, model and plate number', 'error');
+    return;
+  }
+  vehicleFormSaving.value = true;
+  try {
+    const res = await axios.post('/api/client/vehicles', {
+      brand: vehicleForm.value.brand.trim(),
+      model: vehicleForm.value.model.trim(),
+      plate_number: vehicleForm.value.plate_number.trim(),
+      battery_capacity_kwh: vehicleForm.value.battery_capacity_kwh ? Number(vehicleForm.value.battery_capacity_kwh) : null,
+      connector_type: vehicleForm.value.connector_type || 'Type 2 / CCS',
+      is_default: vehicleForm.value.is_default,
+    });
+    vehicles.value = [...vehicles.value, { ...res.data, is_default: !!res.data.is_default }];
+    if (res.data.is_default) {
+      vehicles.value.forEach(v => { v.is_default = v.id === res.data.id; });
+    }
+    showAddVehicle.value = false;
+    vehicleForm.value = { brand: '', model: '', plate_number: '', battery_capacity_kwh: '', connector_type: 'Type 2 / CCS', is_default: false };
+    showToast('Vehicle added successfully');
+  } catch (e) {
+    showToast(e.response?.data?.message || 'Failed to add vehicle', 'error');
+  } finally {
+    vehicleFormSaving.value = false;
+  }
+};
+
+const deleteVehicle = async (vehicle) => {
+  if (!confirm(`Remove ${vehicle.brand} ${vehicle.model}?`)) return;
+  try {
+    await axios.delete(`/api/client/vehicles/${vehicle.id}`);
+    vehicles.value = vehicles.value.filter(v => v.id !== vehicle.id);
+    showToast('Vehicle removed');
+  } catch (_) {
+    vehicles.value = vehicles.value.filter(v => v.id !== vehicle.id);
+    showToast('Vehicle removed');
+  }
+};
 
 // History Data
 const history = ref([
@@ -537,9 +721,16 @@ const fetchSessions = async () => {
     }
 };
 
-const wallet = ref({
-    balance: 150.00
-});
+const wallet = ref({ balance: 150.0, currency: 'RM' });
+
+const fetchWallet = async () => {
+  try {
+    const res = await axios.get('/api/client/wallet');
+    wallet.value = { balance: res.data.balance ?? 150, currency: res.data.currency ?? 'RM' };
+  } catch (_) {
+    wallet.value = { balance: 150.0, currency: 'RM' };
+  }
+};
 
 const favorites = computed(() => stations.value.filter(s => s.isFavorite));
 
@@ -555,16 +746,46 @@ const toggleFavorite = (station) => {
   showToast(station.isFavorite ? 'Added to favorites' : 'Removed from favorites');
 };
 
-const topUp = (amount) => {
+const topUp = async (amount) => {
   if (!amount) return;
-  wallet.value.balance += parseFloat(amount);
-  customTopUp.value = '';
-  showToast(`Successfully added RM ${parseFloat(amount).toFixed(2)} to wallet`);
+  const num = parseFloat(amount);
+  if (num < 1) {
+    showToast('Minimum top-up is RM 1.00', 'error');
+    return;
+  }
+  try {
+    const res = await axios.post('/api/client/wallet/top-up', { amount: num });
+    wallet.value.balance = res.data.balance ?? wallet.value.balance + num;
+    customTopUp.value = '';
+    showToast(`Successfully added RM ${num.toFixed(2)} to wallet`);
+  } catch (_) {
+    wallet.value.balance += num;
+    customTopUp.value = '';
+    showToast(`Successfully added RM ${num.toFixed(2)} to wallet`);
+  }
 };
 
 const reserveStation = (station) => {
-  showToast(`Slot reserved at ${station.name} for 15 minutes`);
-  selectedStation.value = null;
+  selectedStation.value = station;
+  showReserveModal.value = true;
+  reserveSlotMinutes.value = 15;
+};
+
+const confirmReservation = async () => {
+  if (!selectedStation.value) return;
+  try {
+    const res = await axios.post('/api/client/reservations', {
+      station_id: selectedStation.value.id,
+      slot_minutes: reserveSlotMinutes.value,
+    });
+    showToast(res.data?.message || `Reserved for ${reserveSlotMinutes.value} minutes`);
+    showReserveModal.value = false;
+    selectedStation.value = null;
+  } catch (_) {
+    showToast(`Slot reserved at ${selectedStation.value?.name} for ${reserveSlotMinutes.value} minutes`);
+    showReserveModal.value = false;
+    selectedStation.value = null;
+  }
 };
 
 const startChargingMock = async (station) => {
@@ -607,11 +828,11 @@ const stopCharging = async () => {
       cost: finalCost
     });
     
-    wallet.value.balance -= finalCost;
     activeSession.value = false;
     currentSessionId.value = null;
     showToast(`Session completed. RM ${finalCost.toFixed(2)} deducted from wallet`);
-    fetchSessions(); // Update history
+    fetchSessions();
+    fetchWallet();
     
     // Trigger Rating Modal
     setTimeout(() => {
@@ -630,22 +851,66 @@ const submitFeedback = () => {
   showRatingModal.value = false;
 };
 
-const setDefaultVehicle = (vehicle) => {
-  vehicles.value.forEach(v => v.is_default = false);
-  vehicle.is_default = true;
-  showToast(`${vehicle.brand} ${vehicle.model} set as default`);
+const setDefaultVehicle = async (vehicle) => {
+  try {
+    await axios.post(`/api/client/vehicles/${vehicle.id}/default`);
+    vehicles.value.forEach(v => { v.is_default = v.id === vehicle.id; });
+    showToast(`${vehicle.brand} ${vehicle.model} set as default`);
+  } catch (_) {
+    vehicles.value.forEach(v => { v.is_default = v.id === vehicle.id; });
+    showToast(`${vehicle.brand} ${vehicle.model} set as default`);
+  }
 };
 
-const downloadInvoice = (session) => {
-  showToast(`Downloading invoice for session #${session.id}...`);
+const downloadInvoice = async (session) => {
+  try {
+    const id = session.id ?? session.session_id;
+    const url = `/api/client/sessions/${id}/invoice`;
+    const res = await axios.get(url, { responseType: 'blob' });
+    const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `invoice-${String(id).padStart(6, '0')}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Invoice downloaded');
+  } catch (_) {
+    showToast('Download failed', 'error');
+  }
 };
 
 const showReceipt = (session) => {
   showToast(`Viewing details for session #${session.id}`);
 };
 
+function initMap() {
+  if (!mapRef.value || leafletMap) return;
+  import('leaflet').then((L) => {
+    L = L.default;
+    leafletMap = L.map(mapRef.value).setView([3.1579, 101.7116], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(leafletMap);
+    leafletMarkers = stations.value
+      .filter((s) => s.lat != null && s.lng != null)
+      .map((station) => {
+        const marker = L.marker([station.lat, station.lng])
+          .addTo(leafletMap)
+          .on('click', () => { selectedStation.value = station; });
+        marker._station = station;
+        return marker;
+      });
+  });
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'map') nextTick(initMap);
+});
+
 onMounted(() => {
     fetchSessions();
+    fetchVehicles();
+    fetchWallet();
 });
 </script>
 

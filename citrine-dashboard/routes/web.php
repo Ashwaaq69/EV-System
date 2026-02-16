@@ -59,6 +59,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/client/sessions', [\App\Http\Controllers\ClientApiController::class, 'sessions'])->name('api.client.sessions');
     Route::post('/api/client/sessions', [\App\Http\Controllers\ClientApiController::class, 'startSession'])->name('api.client.sessions.start');
     Route::post('/api/client/sessions/{id}/stop', [\App\Http\Controllers\ClientApiController::class, 'stopSession'])->name('api.client.sessions.stop');
+    Route::get('/api/client/sessions/{id}/invoice', [\App\Http\Controllers\ClientApiController::class, 'downloadInvoice'])->name('api.client.sessions.invoice');
+
+    Route::get('/api/client/wallet', [\App\Http\Controllers\ClientApiController::class, 'wallet'])->name('api.client.wallet');
+    Route::post('/api/client/wallet/top-up', [\App\Http\Controllers\ClientApiController::class, 'topUpWallet'])->name('api.client.wallet.topup');
+
+    Route::get('/api/client/vehicles', [\App\Http\Controllers\ClientApiController::class, 'vehicles'])->name('api.client.vehicles');
+    Route::post('/api/client/vehicles', [\App\Http\Controllers\ClientApiController::class, 'storeVehicle'])->name('api.client.vehicles.store');
+    Route::post('/api/client/vehicles/{id}/default', [\App\Http\Controllers\ClientApiController::class, 'setDefaultVehicle'])->name('api.client.vehicles.default');
+    Route::delete('/api/client/vehicles/{id}', [\App\Http\Controllers\ClientApiController::class, 'destroyVehicle'])->name('api.client.vehicles.destroy');
+
+    Route::post('/api/client/reservations', [\App\Http\Controllers\ClientApiController::class, 'createReservation'])->name('api.client.reservations');
 
     // --- Shared Routes ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
