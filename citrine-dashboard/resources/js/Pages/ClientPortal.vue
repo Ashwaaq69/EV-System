@@ -4,8 +4,8 @@
       <!-- Header -->
       <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">User Portal</h1>
-          <p class="text-zinc-500 dark:text-zinc-400">Welcome to CitrineOS, {{ $page.props.auth.user.name }}</p>
+          
+          <p class="text-zinc-500 dark:text-zinc-400">Welcome, {{ authUser?.name || 'User' }} </p>
         </div>
         <div class="flex items-center gap-3">
           <Button variant="outline" size="sm" class="gap-2" @click="activeTab = 'notifications'">
@@ -21,7 +21,7 @@
       </header>
 
       <Tabs v-model="activeTab" class="w-full">
-        <TabsList class="grid grid-cols-3 md:grid-cols-7 mb-8 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+        <TabsList class="grid grid-cols-4 md:grid-cols-8 mb-8 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
           <TabsTrigger value="overview" class="gap-2">
             <LayoutDashboard class="h-4 w-4" />
             <span class="hidden md:inline">Overview</span>
@@ -50,6 +50,10 @@
             <Bell class="h-4 w-4" />
             <span class="hidden md:inline">Notifications</span>
             <Badge v-if="notifications.length > 0" variant="destructive" class="ml-0.5 px-1 min-w-[1rem] h-4 text-[10px]">{{ notifications.length }}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="profile" class="gap-2">
+            <User class="h-4 w-4" />
+            <span class="hidden md:inline">Profile</span>
           </TabsTrigger>
         </TabsList>
 
@@ -153,13 +157,23 @@
           </Card>
         </TabsContent>
 
-        <!-- MAP TAB -->
-        <TabsContent value="map" class="h-[600px] relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-          <div class="absolute inset-0 flex items-center justify-center overflow-hidden">
-            <div ref="mapRef" class="w-full h-full min-h-[400px] rounded-xl z-0"></div>
+        <!-- MAP TAB - forceMount so content exists when tab is selected -->
+        <TabsContent value="map" force-mount class="mt-2 data-[state=inactive]:hidden">
+          <div class="space-y-4">
+            <h2 class="text-xl font-bold text-zinc-900 dark:text-white">Find a charger</h2>
+            <p class="text-sm text-zinc-500">Select a station on the map or from the list below.</p>
 
-            <!-- Station Detail Overlay -->
-            <div v-if="selectedStation" class="absolute bottom-8 left-8 right-8 md:right-auto md:w-96 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 animate-in slide-in-from-left-4 z-10">
+            <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" style="height: 400px;">
+              <div ref="mapRef" class="absolute inset-0 w-full h-full z-0"></div>
+              <div v-if="mapLoading" class="absolute inset-0 flex items-center justify-center z-20 bg-zinc-100 dark:bg-zinc-800">
+                <p class="text-zinc-500">Loading map...</p>
+              </div>
+              <div v-else-if="mapError" class="absolute inset-0 flex items-center justify-center z-20 bg-zinc-100 dark:bg-zinc-800">
+                <p class="text-zinc-500">Map could not load. Use the list below.</p>
+              </div>
+
+              <!-- Station Detail Overlay -->
+              <div v-if="selectedStation" class="absolute bottom-6 left-6 right-6 md:right-auto md:w-96 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 z-30">
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <h3 class="font-bold text-lg">{{ selectedStation.name }}</h3>
@@ -195,21 +209,54 @@
                 </Button>
               </div>
               <Button variant="ghost" size="sm" class="w-full mt-2 text-zinc-400" @click="selectedStation = null">Close</Button>
-            </div>
-            
-            <!-- Map Legend/Overlay -->
-            <div class="absolute top-4 right-4 flex flex-col gap-2 z-10">
-               <Card class="bg-white/80 dark:bg-zinc-900/80 backdrop-blur border-none p-2 shadow-sm">
+              </div>
+
+              <!-- Map Legend -->
+              <div class="absolute top-4 right-4 z-10">
+                <Card class="bg-white/90 dark:bg-zinc-900/90 backdrop-blur border-none p-2 shadow-sm">
                   <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2 text-[10px] font-medium px-2">
-                       <div class="w-2 h-2 rounded-full bg-green-500"></div> Available
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span> Available
                     </div>
                     <div class="flex items-center gap-2 text-[10px] font-medium px-2">
-                       <div class="w-2 h-2 rounded-full bg-red-500"></div> Occupied
+                      <span class="w-2 h-2 rounded-full bg-red-500"></span> Occupied
                     </div>
                   </div>
-               </Card>
+                </Card>
+              </div>
             </div>
+
+            <!-- Stations list - always visible so tab is never blank -->
+            <Card class="border border-zinc-200 dark:border-zinc-800">
+              <CardHeader>
+                <CardTitle class="text-base">Charging stations</CardTitle>
+                <CardDescription>Click a station to see details and start charging</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <button
+                    v-for="s in stations"
+                    :key="s.id"
+                    type="button"
+                    class="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 text-left transition-colors hover:border-[#FF2D20] hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    :class="{ 'ring-2 ring-[#FF2D20] border-[#FF2D20]': selectedStation?.id === s.id }"
+                    @click="selectedStation = s"
+                  >
+                    <div :class="['h-10 w-10 shrink-0 rounded-full flex items-center justify-center', s.status === 'Available' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600']">
+                      <Zap class="h-5 w-5" />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium truncate">{{ s.name }}</p>
+                      <p class="text-xs text-zinc-500 truncate">{{ s.address }}</p>
+                      <p class="text-xs mt-1">
+                        <span :class="s.status === 'Available' ? 'text-green-600' : 'text-red-600'">{{ s.status }}</span>
+                        · {{ s.distance }} km
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
@@ -384,6 +431,47 @@
            </div>
         </TabsContent>
 
+        <!-- PROFILE TAB -->
+        <TabsContent value="profile" class="space-y-6">
+          <Card class="border-none shadow-sm dark:bg-zinc-900 overflow-hidden">
+            <CardHeader>
+              <CardTitle>My Profile</CardTitle>
+              <CardDescription>Your account information</CardDescription>
+            </CardHeader>
+            <CardContent class="flex flex-col sm:flex-row items-start gap-6">
+              <Avatar class="h-20 w-20 border-2 border-zinc-200 dark:border-zinc-700">
+                <AvatarImage :src="authUser?.email ? `https://avatar.vercel.sh/${authUser.email}.png` : undefined" />
+                <AvatarFallback class="bg-[#FF2D20] text-white text-2xl font-bold">
+                  {{ (authUser?.name || 'U').charAt(0).toUpperCase() }}
+                </AvatarFallback>
+              </Avatar>
+              <div class="space-y-3 flex-1">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Name</p>
+                  <p class="text-lg font-semibold text-zinc-900 dark:text-white">{{ authUser?.name || '—' }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Email</p>
+                  <p class="text-lg text-zinc-700 dark:text-zinc-300">{{ authUser?.email || '—' }}</p>
+                </div>
+                <div v-if="authUser?.role" class="pt-2">
+                  <Badge variant="outline" class="text-xs">{{ authUser.role }}</Badge>
+                </div>
+                <div class="pt-4">
+                  <Link
+                    :href="'/profile'"
+                    class="inline-flex items-center gap-2 text-sm font-medium text-[#FF2D20] hover:underline"
+                    @click="navigateToProfile($event)"
+                  >
+                    <User class="h-4 w-4" />
+                    Edit profile &amp; password
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <!-- NOTIFICATIONS TAB -->
         <TabsContent value="notifications" class="space-y-6">
           <Card class="border-none shadow-sm dark:bg-zinc-900">
@@ -538,11 +626,30 @@ import {
   LayoutDashboard, MapPin, Car, History, Wallet as WalletIcon, Star, 
   Bell, Plus, Map as MapIcon, Calendar, Play, Power, 
   Download, Filter, FileText, Trash, Star as StarIcon,
-  CheckCircle, AlertCircle, Info, Clock, Square
+  CheckCircle, AlertCircle, Info, Clock, Square, User
 } from 'lucide-vue-next';
+import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
+import { Link } from '@inertiajs/vue3';
 import 'leaflet/dist/leaflet.css';
+
+const authUser = computed(() => {
+  try {
+    return usePage().props.auth?.user ?? null;
+  } catch {
+    return typeof window !== 'undefined' && window.usePage ? window.usePage().props?.auth?.user ?? null : null;
+  }
+});
+
+function navigateToProfile(e) {
+  const isStandalone = !document.getElementById('app')?.dataset?.page;
+  if (isStandalone) {
+    e.preventDefault();
+    window.location.href = '/profile';
+  }
+}
 
 // State
 const activeTab = ref('overview');
@@ -573,6 +680,8 @@ const connectorTypes = ['Type 2 / CCS', 'Type 2', 'CHAdeMO', 'CCS Combo 1', 'CCS
 const pushEnabled = ref(false);
 const pushEnabling = ref(false);
 const mapRef = ref(null);
+const mapLoading = ref(false);
+const mapError = ref(false);
 let leafletMap = null;
 let leafletMarkers = [];
 
@@ -884,27 +993,63 @@ const showReceipt = (session) => {
 };
 
 function initMap() {
-  if (!mapRef.value || leafletMap) return;
-  import('leaflet').then((L) => {
-    L = L.default;
-    leafletMap = L.map(mapRef.value).setView([3.1579, 101.7116], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(leafletMap);
-    leafletMarkers = stations.value
-      .filter((s) => s.lat != null && s.lng != null)
-      .map((station) => {
-        const marker = L.marker([station.lat, station.lng])
-          .addTo(leafletMap)
-          .on('click', () => { selectedStation.value = station; });
-        marker._station = station;
-        return marker;
+  if (leafletMap) {
+    mapLoading.value = false;
+    leafletMap.invalidateSize();
+    return;
+  }
+  nextTick(() => {
+    if (!mapRef.value) {
+      mapLoading.value = false;
+      mapError.value = true;
+      return;
+    }
+    import('leaflet').then((L) => {
+      L = L.default;
+      // Fix default marker icons in Vite/SPA (wrong paths otherwise)
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
+      try {
+        leafletMap = L.map(mapRef.value).setView([3.1579, 101.7116], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(leafletMap);
+        stations.value
+          .filter((s) => s.lat != null && s.lng != null)
+          .forEach((station) => {
+            const marker = L.marker([station.lat, station.lng])
+              .addTo(leafletMap)
+              .on('click', () => { selectedStation.value = station; });
+            marker.bindTooltip(station.name, { permanent: false, direction: 'top' });
+            leafletMarkers.push(marker);
+          });
+        setTimeout(() => { leafletMap.invalidateSize(); }, 100);
+        mapLoading.value = false;
+      } catch (err) {
+        console.error('Map init error:', err);
+        mapError.value = true;
+        mapLoading.value = false;
+      }
+    }).catch((err) => {
+      console.error('Leaflet load error:', err);
+      mapError.value = true;
+      mapLoading.value = false;
+    });
   });
 }
 
 watch(activeTab, (tab) => {
-  if (tab === 'map') nextTick(initMap);
+  if (tab === 'map') {
+    mapLoading.value = true;
+    mapError.value = false;
+    nextTick(() => {
+      setTimeout(initMap, 150);
+    });
+  }
 });
 
 onMounted(() => {

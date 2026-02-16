@@ -43,8 +43,23 @@ export default defineConfig({
     server: {
         port: 5175,
         strictPort: true,
-        // Allow CORS for backend talk
         cors: true,
+        // Proxy /api and Laravel auth routes to the Laravel backend when running standalone Vite dev
+        proxy: {
+            '/api': {
+                target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+                changeOrigin: true,
+            },
+            '/sanctum': {
+                target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+                changeOrigin: true,
+            },
+            '/login': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+            '/register': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+            '/logout': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+            '/forgot-password': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+            '/reset-password': { target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000', changeOrigin: true },
+        },
     },
     build: {
         outDir: 'public/dist',
