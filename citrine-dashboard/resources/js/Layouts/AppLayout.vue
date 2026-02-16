@@ -4,10 +4,14 @@
     <aside class="w-64 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-sm">
       <div class="flex h-full flex-col">
         <div class="flex h-16 items-center px-6">
-          <span class="text-xl font-bold tracking-tighter text-[#FF2D20] flex items-center gap-2">
+          <Link 
+            :href="$page.props.auth.user.role === 'admin' ? '/dashboard' : '/client/portal'"
+            @click="navigateTo($event, $page.props.auth.user.role === 'admin' ? '/dashboard' : '/client/portal')"
+            class="text-xl font-bold tracking-tighter text-[#FF2D20] flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div class="w-2 h-6 bg-[#FF2D20] rounded-full"></div>
             CitrineOS
-          </span>
+          </Link>
         </div>
         
         <div class="px-3 py-2">
@@ -120,7 +124,7 @@
 </template>
 
 <script setup>
-import { Link, router } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Separator } from '@/Components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
@@ -142,10 +146,11 @@ const navigateTo = (e, href) => {
 };
 
 const handleLogout = () => {
+    // Check if we are in standalone mode
     const isStandalone = !document.getElementById('app')?.dataset.page;
     
     if (isStandalone) {
-        window.location.href = 'http://localhost:8000/login';
+        window.location.href = '/login';
     } else {
         router.post('/logout');
     }

@@ -57,6 +57,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('client.portal');
 
     Route::get('/api/client/sessions', [\App\Http\Controllers\ClientApiController::class, 'sessions'])->name('api.client.sessions');
+    Route::post('/api/client/sessions', [\App\Http\Controllers\ClientApiController::class, 'startSession'])->name('api.client.sessions.start');
+    Route::post('/api/client/sessions/{id}/stop', [\App\Http\Controllers\ClientApiController::class, 'stopSession'])->name('api.client.sessions.stop');
 
     // --- Shared Routes ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

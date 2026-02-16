@@ -3,10 +3,16 @@ import Dashboard from './Pages/Dashboard.vue';
 import Analytics from './Pages/Analytics.vue';
 import Transactions from './Pages/Transactions.vue';
 import ClientPortal from './Pages/ClientPortal.vue';
+import Login from './Pages/Auth/Login.vue';
+import Register from './Pages/Auth/Register.vue';
+import ForgotPassword from './Pages/Auth/ForgotPassword.vue';
+import ResetPassword from './Pages/Auth/ResetPassword.vue';
 
 const mockProps = {
   // Shared props
   auth: { user: { name: 'Demo Client', email: 'client@citrineos.com', role: 'client' } },
+  canResetPassword: true,
+  status: null,
   // Dashboard props
   onlineChargers: 12,
   offlineChargers: 3,
@@ -32,6 +38,11 @@ const routes = [
   { path: '/dashboard', component: Dashboard, props: mockProps },
   { path: '/analytics', component: Analytics, props: mockProps },
   { path: '/transactions', component: Transactions, props: mockProps },
+  { path: '/client/portal', component: ClientPortal, props: mockProps },
+  { path: '/login', component: Login, props: mockProps },
+  { path: '/register', component: Register, props: mockProps },
+  { path: '/forgot-password', component: ForgotPassword, props: mockProps },
+  { path: '/reset-password', component: ResetPassword, props: mockProps },
 ];
 
 const router = createRouter({
