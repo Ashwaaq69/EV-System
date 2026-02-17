@@ -11,7 +11,7 @@
           <Button variant="outline" size="sm" class="gap-2" @click="activeTab = 'notifications'">
             <Bell class="h-4 w-4" />
             <span class="hidden sm:inline">Notifications</span>
-            <Badge v-if="notifications.length > 0" variant="destructive" class="ml-1 px-1 min-w-[1.2rem] h-5">{{ notifications.length }}</Badge>
+            <Badge v-if="notifications.length > 0"S variant="destructive" class="ml-1 px-1 min-w-[1.2rem] h-5">{{ notifications.length }}</Badge>
           </Button>
           <Button size="sm" class="bg-[#FF2D20] hover:bg-[#E0261B] text-white border-none gap-2" @click="activeTab = 'wallet'">
             <Plus class="h-4 w-4" />
@@ -40,11 +40,7 @@
           </TabsTrigger>
           <TabsTrigger value="wallet" class="gap-2">
             <WalletIcon class="h-4 w-4" />
-            <span class="hidden md:inline">Wallet</span>
-          </TabsTrigger>
-          <TabsTrigger value="favorites" class="gap-2">
-            <Star class="h-4 w-4" />
-            <span class="hidden md:inline">Favorites</span>
+            <span class="hidden md:inline">Billing</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" class="gap-2">
             <Bell class="h-4 w-4" />
@@ -140,9 +136,9 @@
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow v-for="session in (portalSessions?.data || []).slice(0, 3)" :key="session.id">
+                  <TableRow v-for="session in (portalSessions?.data || []).slice(0, 5)" :key="session.id">
                     <TableCell>{{ new Date(session.start_time).toLocaleDateString() }}</TableCell>
-                    <TableCell>{{ session.charge_point?.identifier || 'Main Station A' }}</TableCell>
+                    <TableCell>{{ session.charge_point?.location?.name || session.charge_point?.identifier || 'Main Station' }}</TableCell>
                     <TableCell>{{ session.kwh_consumed }} kWh</TableCell>
                     <TableCell class="text-right">
                       <Button variant="ghost" size="sm" class="h-8 gap-2" @click="downloadInvoice(session)">
@@ -150,6 +146,9 @@
                         Receipt
                       </Button>
                     </TableCell>
+                  </TableRow>
+                  <TableRow v-if="!portalSessions?.data?.length">
+                    <TableCell colspan="4" class="text-center py-4 text-zinc-400 italic">No activity yet</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -308,13 +307,15 @@
           <Card class="border-none shadow-sm dark:bg-zinc-900 p-0">
              <CardHeader class="px-6 py-4 flex flex-row items-center justify-between">
                 <CardTitle>Transaction History</CardTitle>
-                <div class="flex gap-2">
-                   <Button variant="outline" size="sm" class="gap-2">
-                     <Filter class="h-3 w-3" /> Filter
-                   </Button>
-                   <Button variant="outline" size="sm" class="gap-2">
-                     <Download class="h-3 w-3" /> Export CSV
-                   </Button>
+                <div class="flex gap-2 items-center">
+                   <div class="relative w-48 md:w-64">
+                     <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+                     <Input 
+                       placeholder="Search locations..." 
+                       v-model="sessionSearch"
+                       class="pl-9 h-9"
+                     />
+                   </div>
                 </div>
              </CardHeader>
              <CardContent class="p-0">
@@ -330,74 +331,172 @@
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow v-for="session in history" :key="session.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer" @click="showReceipt(session)">
-                      <TableCell class="font-mono text-[10px] pl-6">#{{ session.id.toString().padStart(6, '0') }}</TableCell>
-                      <TableCell class="font-medium">{{ session.location }}</TableCell>
+                    <TableRow v-for="session in portalSessions.data" :key="session.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer" @click="showReceipt(session)">
+                      <TableCell class="font-mono text-[10px] pl-6">#{{ String(session.id).padStart(6, '0') }}</TableCell>
+                      <TableCell class="font-medium">{{ session.charge_point?.location?.name || session.charge_point?.identifier || 'N/A' }}</TableCell>
                       <TableCell class="text-xs text-zinc-500">
-                         {{ session.date }} <br/>
-                         {{ session.time }}
+                         {{ new Date(session.start_time).toLocaleDateString() }} <br/>
+                         {{ new Date(session.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
                       </TableCell>
-                      <TableCell>{{ session.energy }} kWh</TableCell>
-                      <TableCell class="font-bold">RM {{ session.cost.toFixed(2) }}</TableCell>
+                      <TableCell>{{ session.kwh_consumed }} kWh</TableCell>
+                      <TableCell class="font-bold">RM {{ Number(session.total_cost).toFixed(2) }}</TableCell>
                       <TableCell class="pr-6 text-right">
                          <Button variant="ghost" size="icon" class="h-8 w-8 text-blue-600" @click.stop="downloadInvoice(session)">
                             <FileText class="h-4 w-4" />
                          </Button>
                       </TableCell>
                     </TableRow>
+                    <TableRow v-if="!portalSessions.data.length">
+                      <TableCell colspan="6" class="text-center py-12 text-zinc-400">No transactions found</TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
+                
+                <!-- Pagination -->
+                <div class="flex items-center justify-between px-6 py-4 border-t border-zinc-100 dark:border-zinc-800" v-if="portalSessions.last_page > 1">
+                  <div class="text-xs text-zinc-500">
+                    Showing {{ (portalSessions.current_page - 1) * portalSessions.per_page + 1 }} to {{ Math.min(portalSessions.current_page * portalSessions.per_page, portalSessions.total) }} of {{ portalSessions.total }} entries
+                  </div>
+                  <div class="flex gap-2">
+                    <Button variant="outline" size="sm" :disabled="portalSessions.current_page === 1" @click="fetchSessions(portalSessions.current_page - 1)">Previous</Button>
+                    <Button variant="outline" size="sm" :disabled="portalSessions.current_page === portalSessions.last_page" @click="fetchSessions(portalSessions.current_page + 1)">Next</Button>
+                  </div>
+                </div>
              </CardContent>
           </Card>
         </TabsContent>
 
-        <!-- WALLET TAB -->
+        <!-- BILLING TAB (Wallet + Subscriptions + Promo + dynamic pricing) -->
         <TabsContent value="wallet" class="space-y-6">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card class="relative bg-zinc-900 text-white overflow-hidden p-8 rounded-3xl min-h-[240px] flex flex-col justify-between shadow-2xl">
-               <div class="absolute top-0 right-0 p-8 opacity-10">
-                  <WalletIcon class="h-32 w-32" />
-               </div>
-               <div class="z-10">
-                  <p class="text-zinc-400 text-sm font-medium">Citrine Wallet</p>
-                  <h3 class="text-5xl font-bold mt-2">RM {{ wallet.balance.toFixed(2) }}</h3>
-               </div>
-               <div class="z-10 flex flex-col gap-4">
-                  <div class="flex justify-between items-end">
-                     <div>
-                        <p class="text-[10px] text-zinc-500 uppercase tracking-widest">Linked Card</p>
-                        <p class="text-sm font-mono mt-1">•••• •••• •••• 4592</p>
-                     </div>
-                     <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" class="h-8" alt="Mastercard" />
-                  </div>
-               </div>
-               <div class="absolute -bottom-12 -right-12 w-48 h-48 bg-[#FF2D20] rounded-full blur-[100px] opacity-20"></div>
-            </Card>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+              <!-- Wallet Card -->
+              <Card class="relative bg-zinc-900 text-white overflow-hidden p-6 rounded-3xl min-h-[200px] flex flex-col justify-between shadow-2xl">
+                 <div class="absolute top-4 right-4 text-zinc-800">
+                    <WalletIcon class="h-20 w-20" />
+                 </div>
+                 <div class="z-10">
+                    <p class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Prepaid Balance</p>
+                    <h3 class="text-4xl font-bold mt-1">RM {{ wallet.balance.toFixed(2) }}</h3>
+                 </div>
+                 <div class="z-10 flex flex-col gap-1">
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-widest">Linked Card</p>
+                    <p class="text-xs font-mono">•••• 4592</p>
+                 </div>
+                 <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-[#FF2D20] rounded-full blur-[80px] opacity-20"></div>
+              </Card>
 
-            <Card class="border shadow-sm p-6 space-y-6">
-               <h3 class="font-bold">Quick Top Up</h3>
-               <div class="grid grid-cols-3 gap-3">
-                  <Button variant="outline" v-for="amount in [10, 20, 50, 100, 200, 500]" :key="amount" @click="topUp(amount)">
-                     RM {{ amount }}
-                  </Button>
-               </div>
-               <div class="space-y-2">
-                  <Label>Custom Amount</Label>
-                  <div class="flex gap-2">
-                     <Input type="number" placeholder="Enter amount" v-model="customTopUp" />
-                     <Button class="bg-zinc-900 text-white" @click="topUp(customTopUp)">Top Up</Button>
+              <!-- Quick Top Up -->
+              <Card class="border shadow-sm p-4 space-y-4">
+                 <h3 class="font-bold text-sm flex items-center gap-2">
+                   <Plus class="h-4 w-4 text-[#FF2D20]" />
+                   Quick top Up
+                 </h3>
+                 <div class="grid grid-cols-3 gap-2">
+                    <Button variant="outline" size="sm" v-for="amount in [20, 50, 100]" :key="amount" class="text-xs" @click="topUp(amount)">
+                       RM {{ amount }}
+                    </Button>
+                 </div>
+                 <div class="space-y-2">
+                    <div class="flex gap-2">
+                       <Input type="number" placeholder="Other" v-model="customTopUp" class="h-8 text-xs" />
+                       <Button size="sm" class="bg-zinc-900 text-white" @click="topUp(customTopUp)">Add</Button>
+                    </div>
+                 </div>
+              </Card>
+
+              <!-- Promo Code -->
+              <Card class="border shadow-sm p-4 space-y-2">
+                <h3 class="font-bold text-sm">Promo Code</h3>
+                <div class="flex gap-2">
+                   <Input placeholder="Enter code" v-model="promoCode" class="h-8 text-xs font-mono" />
+                   <Button variant="outline" size="sm" @click="checkPromo">Apply</Button>
+                </div>
+                <p v-if="appliedPromo" class="text-[10px] text-green-600 font-bold">✓ {{ appliedPromo.code }} applied ({{ appliedPromo.type === 'percentage' ? '-' + appliedPromo.value + '%' : '-RM' + appliedPromo.value }})</p>
+              </Card>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+              <!-- Current Plan -->
+              <Card class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
+                <div v-if="activeSubscription" class="space-y-4">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <Badge variant="default" class="bg-blue-600 mb-2">ACTIVE PLAN</Badge>
+                      <h2 class="text-2xl font-black">{{ activeSubscription.plan.name }}</h2>
+                      <p class="text-zinc-500 text-sm">Renews on {{ new Date(activeSubscription.expires_at).toLocaleDateString() }}</p>
+                    </div>
+                    <div class="text-right">
+                       <p class="text-2xl font-bold text-blue-600">{{ activeSubscription.plan.discount_percentage }}%</p>
+                       <p class="text-[10px] text-zinc-400 uppercase font-bold">Session Discount</p>
+                    </div>
                   </div>
-               </div>
-               <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                  <p class="text-xs text-zinc-500 mb-3">Or pay via FPX</p>
-                  <div class="grid grid-cols-4 gap-2 opacity-60">
-                     <div class="border rounded p-2 flex items-center justify-center h-10 grayscale hover:grayscale-0 cursor-pointer transition-all">MAYBANK</div>
-                     <div class="border rounded p-2 flex items-center justify-center h-10 grayscale hover:grayscale-0 cursor-pointer transition-all">CIMB</div>
-                     <div class="border rounded p-2 flex items-center justify-center h-10 grayscale hover:grayscale-0 cursor-pointer transition-all">RHB</div>
-                     <div class="border rounded p-2 flex items-center justify-center h-10 grayscale hover:grayscale-0 cursor-pointer transition-all">PBB</div>
+                  <div class="grid grid-cols-2 gap-4 py-4 border-t border-blue-100 dark:border-zinc-700">
+                    <div>
+                      <p class="text-[10px] text-zinc-500 uppercase">Inclusive Energy</p>
+                      <p class="font-bold">{{ activeSubscription.plan.free_kwh }} kWh / mo</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-zinc-500 uppercase">Status</p>
+                      <p class="font-bold text-green-600">Autopay On</p>
+                    </div>
                   </div>
-               </div>
-            </Card>
+                </div>
+                <div v-else class="py-8 text-center space-y-4">
+                  <Zap class="h-10 w-10 text-zinc-300 mx-auto" />
+                  <div>
+                    <h3 class="font-bold">No Subscription Active</h3>
+                    <p class="text-sm text-zinc-500">Subscribe to get lower rates and inclusive kWh.</p>
+                  </div>
+                </div>
+              </Card>
+
+              <!-- Plans Comparison -->
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="font-bold">Subscription charging plans</h3>
+                  <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Malaysia Only</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card v-for="plan in billingPlans" :key="plan.id" class="p-4 border shadow-sm flex flex-col justify-between hover:border-blue-300 transition-colors" :class="{ 'ring-2 ring-blue-500 bg-blue-50/10': activeSubscription?.subscription_plan_id === plan.id }">
+                     <div>
+                        <div class="flex justify-between items-center mb-2">
+                          <h4 class="font-bold text-base">{{ plan.name }}</h4>
+                          <span v-if="activeSubscription?.subscription_plan_id === plan.id" class="text-blue-600"><CheckCircle class="h-4 w-4" /></span>
+                        </div>
+                        <p class="text-xs text-zinc-500 leading-relaxed mb-4">{{ plan.description }}</p>
+                        <div class="space-y-1 mb-6">
+                           <div class="flex items-center gap-2 text-xs font-semibold">
+                             <Zap class="h-3 w-3 text-blue-500" /> {{ plan.free_kwh }} kWh Included
+                           </div>
+                           <div class="flex items-center gap-2 text-xs font-semibold">
+                             <DollarSign class="h-3 w-3 text-green-500" /> {{ plan.discount_percentage }}% Discount
+                           </div>
+                        </div>
+                     </div>
+                     <div class="flex items-center justify-between">
+                        <div class="text-xl font-black">RM {{ plan.price }}<span class="text-xs text-zinc-400 font-normal">/mo</span></div>
+                        <Button size="sm" :disabled="activeSubscription?.subscription_plan_id === plan.id" class="h-8 text-xs" :variant="activeSubscription?.subscription_plan_id === plan.id ? 'outline' : 'default'" @click="purchaseSubscription(plan)">
+                           {{ activeSubscription?.subscription_plan_id === plan.id ? 'Current' : 'Subscribe' }}
+                        </Button>
+                     </div>
+                  </Card>
+                </div>
+              </div>
+
+              <!-- dynamic pricing notice -->
+              <Card class="bg-zinc-50 dark:bg-zinc-800/50 border-none p-4">
+                <div class="flex gap-4 items-start">
+                  <div class="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+                    <Clock class="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-200">Dynamic Pricing Active</h4>
+                    <p class="text-[11px] text-zinc-500 mt-1">Peak hours (18:00 - 22:00) apply a surcharge. Off-peak energy is 20% cheaper for all users. Tax (SST 8%) is calculated on total session cost.</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         </TabsContent>
         
@@ -474,38 +573,52 @@
 
         <!-- NOTIFICATIONS TAB -->
         <TabsContent value="notifications" class="space-y-6">
-          <Card class="border-none shadow-sm dark:bg-zinc-900">
-            <CardHeader>
-              <CardTitle>Notifications</CardTitle>
-              <CardDescription>Charging alerts and updates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                <Bell class="h-5 w-5 text-[#FF2D20]" />
-                <div class="flex-1">
-                  <p class="text-sm font-medium">Push notifications</p>
-                  <p class="text-xs text-zinc-500">Get alerts for session start/end and low balance.</p>
+           <div class="flex justify-between items-center px-1">
+             <h2 class="text-xl font-bold">Latest Notifications</h2>
+             <Button variant="ghost" size="sm" class="text-blue-600 text-[10px] uppercase font-bold tracking-wider" @click="axios.post('/api/client/notifications/read').then(() => fetchNotifications())" v-if="notifications.length > 0">Mark all as read</Button>
+           </div>
+           
+           <div class="space-y-3">
+            <Card class="border-none shadow-sm dark:bg-zinc-900 overflow-hidden">
+              <CardContent class="p-6">
+                <!-- Push Toggle -->
+                <div class="flex items-center gap-3 mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800">
+                  <Bell class="h-5 w-5 text-blue-600" />
+                  <div class="flex-1">
+                    <p class="text-sm font-bold">Real-time alerts</p>
+                    <p class="text-[11px] text-zinc-500">Get push notifications for session events and low balance.</p>
+                  </div>
+                  <Button v-if="!pushEnabled" size="sm" class="bg-blue-600 text-white border-none h-8 px-4" :disabled="pushEnabling" @click="enablePush">
+                    {{ pushEnabling ? 'Enabling...' : 'Enable' }}
+                  </Button>
+                  <Badge v-else variant="default" class="bg-green-600 border-none">Active</Badge>
                 </div>
-                <Button v-if="!pushEnabled" size="sm" class="bg-[#FF2D20] text-white" :disabled="pushEnabling" @click="enablePush">
-                  {{ pushEnabling ? 'Enabling...' : 'Enable' }}
-                </Button>
-                <Badge v-else variant="default" class="bg-green-600">Enabled</Badge>
-              </div>
-              <div class="space-y-3">
-                <div v-for="n in notifications" :key="n.id" class="flex items-start gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
-                  <Bell class="h-4 w-4 text-zinc-400 mt-0.5" />
-                  <div>
-                    <p class="font-medium text-sm">{{ n.title }}</p>
-                    <p class="text-xs text-zinc-500">{{ n.message }}</p>
-                    <p class="text-[10px] text-zinc-400 mt-1">{{ n.time }}</p>
+
+                <!-- Notifications List -->
+                <div class="space-y-3">
+                  <div v-for="n in notifications" :key="n.id" :class="['flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer', n.is_read ? 'bg-zinc-50/50 dark:bg-zinc-800/10' : 'bg-white dark:bg-zinc-900 shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-800']" @click="axios.post('/api/client/notifications/read').then(() => fetchNotifications())">
+                     <div :class="['h-10 w-10 shrink-0 rounded-full flex items-center justify-center', n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-yellow-100 text-yellow-600' : n.type === 'danger' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600']">
+                        <Zap class="h-5 w-5" v-if="n.type === 'success'" />
+                        <Bell class="h-5 w-5" v-else />
+                     </div>
+                     <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                           <p class="font-bold text-sm">{{ n.title }}</p>
+                           <span class="text-[10px] text-zinc-400 font-mono uppercase">{{ n.time }}</span>
+                        </div>
+                        <p class="text-xs text-zinc-500 mt-1">{{ n.message }}</p>
+                     </div>
+                  </div>
+                  <div v-if="!notifications.length" class="text-center py-20 bg-zinc-50 dark:bg-zinc-800/20 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
+                     <BellOff class="h-10 w-10 text-zinc-300 mx-auto mb-3" />
+                     <p class="text-zinc-500 italic text-sm">No notifications yet</p>
                   </div>
                 </div>
-                <p v-if="notifications.length === 0" class="text-sm text-zinc-500 italic">No notifications yet.</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+           </div>
         </TabsContent>
-      </Tabs>
+        </Tabs>
 
       <!-- Add Vehicle Modal -->
       <Dialog :open="showAddVehicle" @update:open="showAddVehicle = $event">
@@ -685,6 +798,24 @@ const mapError = ref(false);
 let leafletMap = null;
 let leafletMarkers = [];
 
+// New Search & Pagination Refs
+const sessionSearch = ref('');
+const sessionPage = ref(1);
+const notifications = ref([]);
+const billingPlans = ref([]);
+const activeSubscription = ref(null);
+const promoCode = ref('');
+const appliedPromo = ref(null);
+
+const fetchNotifications = async () => {
+  try {
+    const res = await axios.get('/api/client/notifications');
+    notifications.value = res.data;
+  } catch (err) {
+    console.error('Failed to fetch notifications:', err);
+  }
+};
+
 async function enablePush() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     showToast('Push notifications not supported in this browser', 'error');
@@ -708,12 +839,6 @@ async function enablePush() {
     pushEnabling.value = false;
   }
 }
-
-// Mock Notifications
-const notifications = ref([
-  { id: 1, title: 'Wallet Low', message: 'Your balance is below RM 10.00', time: '2h ago' },
-  { id: 2, title: 'Payment Successful', message: 'Top up of RM 50.00 completed', time: '1d ago' }
-]);
 
 // Continuous Monitoring Data (Mock)
 const chargingData = ref({
@@ -743,14 +868,16 @@ const stopMonitoring = () => {
     if (monitorInterval) clearInterval(monitorInterval);
 };
 
-// Stations (with lat/lng for Leaflet map)
-const stations = ref([
-  { id: 1, name: 'Suria KLCC P2', address: 'Level P2, Lot 1.1, KLCC', status: 'Available', lat: 3.1579, lng: 101.7116, distance: 0.8, rating: 4.8, reviews: 124, isFavorite: true },
-  { id: 2, name: 'Pavilion Bukit Jalil', address: 'B1, Pillar C12', status: 'Occupied', lat: 3.0634, lng: 101.6382, distance: 12.4, rating: 4.5, reviews: 89, isFavorite: false },
-  { id: 3, name: 'Mid Valley Megamall', address: 'P1, Zone Red', status: 'Available', lat: 3.1177, lng: 101.6780, distance: 4.2, rating: 4.2, reviews: 210, isFavorite: false },
-  { id: 4, name: 'IOI City Mall', address: 'LG, Pillar B5', status: 'Available', lat: 3.0486, lng: 101.6172, distance: 15.6, rating: 4.9, reviews: 45, isFavorite: true },
-  { id: 5, name: 'Paradigm Mall', address: 'B2, Near Entrance', status: 'Occupied', lat: 3.1076, lng: 101.6055, distance: 8.9, rating: 3.8, reviews: 67, isFavorite: false },
-]);
+// Stations (fetched from DB)
+const stations = ref([]);
+const fetchStations = async () => {
+  try {
+    const res = await axios.get('/api/client/stations');
+    stations.value = res.data;
+  } catch (err) {
+    console.error('Failed to fetch stations:', err);
+  }
+};
 
 // Vehicles (fetched from API or fallback mock)
 const vehicles = ref([]);
@@ -765,7 +892,6 @@ const fetchVehicles = async () => {
   } catch (_) {
     vehicles.value = [
       { id: 1, brand: 'Tesla', model: 'Model 3', plate_number: 'WPP 1234', battery_capacity_kwh: 75, connector_type: 'Type 2 / CCS', is_default: true },
-      { id: 2, brand: 'BYD', model: 'Atto 3', plate_number: 'VBE 9988', battery_capacity_kwh: 60, connector_type: 'Type 2 / CCS', is_default: false },
     ];
   }
 };
@@ -812,32 +938,28 @@ const deleteVehicle = async (vehicle) => {
 };
 
 // History Data
-const history = ref([
-  { id: 10452, location: 'Suria KLCC P2', date: 'Feb 12, 2026', time: '14:23', energy: 34.5, cost: 29.35 },
-  { id: 10421, location: 'Pavilion KL', date: 'Feb 09, 2026', time: '09:12', energy: 12.8, cost: 10.88 },
-  { id: 10398, location: 'Mid Valley', date: 'Feb 05, 2026', time: '18:45', energy: 22.1, cost: 18.79 },
-  { id: 10355, location: 'Sunway Pyramid', date: 'Jan 30, 2026', time: '12:30', energy: 45.0, cost: 38.25 },
-]);
+const portalSessions = ref({ data: [], current_page: 1, last_page: 1, total: 0 });
 
-const portalSessions = ref({ data: [] });
-
-const fetchSessions = async () => {
+const fetchSessions = async (page = 1) => {
     try {
-        const response = await axios.get('/api/client/sessions');
+        const response = await axios.get('/api/client/sessions', {
+          params: { page, search: sessionSearch.value }
+        });
         portalSessions.value = response.data;
+        sessionPage.value = response.data.current_page;
     } catch (error) {
         console.error('Failed to fetch sessions:', error);
     }
 };
 
-const wallet = ref({ balance: 150.0, currency: 'RM' });
+const wallet = ref({ balance: 0, currency: 'RM' });
 
 const fetchWallet = async () => {
   try {
     const res = await axios.get('/api/client/wallet');
-    wallet.value = { balance: res.data.balance ?? 150, currency: res.data.currency ?? 'RM' };
+    wallet.value = { balance: res.data.balance ?? 0, currency: res.data.currency ?? 'RM' };
   } catch (_) {
-    wallet.value = { balance: 150.0, currency: 'RM' };
+    wallet.value = { balance: 0, currency: 'RM' };
   }
 };
 
@@ -850,27 +972,66 @@ const showToast = (msg, type = 'success') => {
   setTimeout(() => { toastMsg.value = ''; }, 3000);
 };
 
-const toggleFavorite = (station) => {
-  station.isFavorite = !station.isFavorite;
-  showToast(station.isFavorite ? 'Added to favorites' : 'Removed from favorites');
+const toggleFavorite = async (station) => {
+  try {
+    const res = await axios.post('/api/client/stations/favorite', { charge_point_id: station.id });
+    station.isFavorite = res.data.isFavorite;
+    showToast(res.data.message);
+  } catch (err) {
+    station.isFavorite = !station.isFavorite; // Optimistic update rollback 
+    showToast('Failed to update favorite', 'error');
+  }
+};
+
+const fetchBilling = async () => {
+    try {
+        const res = await axios.get('/api/client/billing/summary');
+        billingPlans.value = res.data.plans;
+        activeSubscription.value = res.data.active_subscription;
+    } catch (err) {
+        console.error('Failed to fetch billing info:', err);
+    }
+};
+
+const purchaseSubscription = async (plan) => {
+    if (confirm(`Do you want to subscribe to ${plan.name} for RM ${plan.price}?`)) {
+        try {
+            await axios.post('/api/client/billing/subscribe', { plan_id: plan.id });
+            showToast(`Subscribed to ${plan.name}!`);
+            fetchBilling();
+            fetchWallet();
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Subscription failed', 'error');
+        }
+    }
+};
+
+const checkPromo = async () => {
+    if (!promoCode.value) return;
+    try {
+        const res = await axios.post('/api/client/billing/promo', { code: promoCode.value });
+        appliedPromo.value = res.data.promo;
+        showToast('Promo code applied!');
+    } catch (err) {
+        showToast('Invalid promo code', 'error');
+    }
 };
 
 const topUp = async (amount) => {
-  if (!amount) return;
   const num = parseFloat(amount);
-  if (num < 1) {
-    showToast('Minimum top-up is RM 1.00', 'error');
+  if (!num || num <= 0) {
+    showToast('Please enter a valid amount', 'error');
     return;
   }
+  
   try {
     const res = await axios.post('/api/client/wallet/top-up', { amount: num });
-    wallet.value.balance = res.data.balance ?? wallet.value.balance + num;
+    showToast(`Top up of RM ${num.toFixed(2)} successful`);
+    wallet.value.balance = res.data.balance;
     customTopUp.value = '';
-    showToast(`Successfully added RM ${num.toFixed(2)} to wallet`);
-  } catch (_) {
-    wallet.value.balance += num;
-    customTopUp.value = '';
-    showToast(`Successfully added RM ${num.toFixed(2)} to wallet`);
+    fetchNotifications();
+  } catch (error) {
+    showToast('Top up failed. Please try again.', 'error');
   }
 };
 
@@ -884,16 +1045,15 @@ const confirmReservation = async () => {
   if (!selectedStation.value) return;
   try {
     const res = await axios.post('/api/client/reservations', {
-      station_id: selectedStation.value.id,
+      charge_point_id: selectedStation.value.id,
       slot_minutes: reserveSlotMinutes.value,
     });
     showToast(res.data?.message || `Reserved for ${reserveSlotMinutes.value} minutes`);
     showReserveModal.value = false;
     selectedStation.value = null;
+    fetchNotifications();
   } catch (_) {
-    showToast(`Slot reserved at ${selectedStation.value?.name} for ${reserveSlotMinutes.value} minutes`);
-    showReserveModal.value = false;
-    selectedStation.value = null;
+    showToast('Reservation failed', 'error');
   }
 };
 
@@ -905,8 +1065,6 @@ const startChargingMock = async (station) => {
   }
   
   try {
-    // For demo, we use station.id as charge_point_id if it's the real one
-    // In KLCC case id: 1 is CS-001
     const response = await axios.post('/api/client/sessions', {
       charge_point_id: station.id
     });
@@ -918,11 +1076,12 @@ const startChargingMock = async (station) => {
     activeTab.value = 'overview';
     chargingData.value = { kwh: 0, cost: 0, time: '00:00:00', startTime: new Date() };
     startMonitoring();
-    showToast('Charging session started successfully');
+    showToast('Charging session started');
     fetchSessions(); // Update history
+    fetchNotifications();
   } catch (error) {
     console.error('Failed to start session:', error);
-    showToast('Failed to start session. Please try again.', 'error');
+    showToast('Failed to start session.', 'error');
   }
 };
 
@@ -938,10 +1097,12 @@ const stopCharging = async () => {
     });
     
     activeSession.value = false;
+    const oldId = currentSessionId.value;
     currentSessionId.value = null;
-    showToast(`Session completed. RM ${finalCost.toFixed(2)} deducted from wallet`);
+    showToast(`Session completed. RM ${finalCost.toFixed(2)} deducted.`);
     fetchSessions();
     fetchWallet();
+    fetchNotifications();
     
     // Trigger Rating Modal
     setTimeout(() => {
@@ -955,36 +1116,56 @@ const stopCharging = async () => {
   }
 };
 
-const submitFeedback = () => {
-  showToast('Thank you for your feedback!');
-  showRatingModal.value = false;
+const submitFeedback = async () => {
+  if (currentRating.value === 0) {
+    showToast('Please select a rating', 'error');
+    return;
+  }
+  try {
+    const res = await axios.post('/api/client/sessions/feedback', {
+      session_id: portalSessions.value?.data?.[0]?.id,
+      rating: currentRating.value,
+      comment: feedbackComment.value
+    });
+    showToast(res.data.message);
+    showRatingModal.value = false;
+    fetchStations(); // Update reviews count
+  } catch (err) {
+    showToast('Failed to submit feedback', 'error');
+  }
 };
 
 const setDefaultVehicle = async (vehicle) => {
   try {
     await axios.post(`/api/client/vehicles/${vehicle.id}/default`);
     vehicles.value.forEach(v => { v.is_default = v.id === vehicle.id; });
-    showToast(`${vehicle.brand} ${vehicle.model} set as default`);
+    showToast(`${vehicle.brand} set as default`);
   } catch (_) {
-    vehicles.value.forEach(v => { v.is_default = v.id === vehicle.id; });
-    showToast(`${vehicle.brand} ${vehicle.model} set as default`);
+    showToast('Failed to set default', 'error');
   }
 };
 
 const downloadInvoice = async (session) => {
   try {
-    const id = session.id ?? session.session_id;
+    const id = session.id;
     const url = `/api/client/sessions/${id}/invoice`;
     const res = await axios.get(url, { responseType: 'blob' });
-    const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/json' });
+    
+    // axios returns blob directly when responseType is 'blob'
+    const blob = res.data;
+    const downloadUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `invoice-${String(id).padStart(6, '0')}.json`;
+    a.href = downloadUrl;
+    a.download = `receipt-${String(id).padStart(6, '0')}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('Invoice downloaded');
-  } catch (_) {
-    showToast('Download failed', 'error');
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
+    
+    showToast('Receipt downloaded');
+  } catch (err) {
+    console.error('Download failed:', err);
+    showToast('Download failed. Please try again.', 'error');
   }
 };
 
@@ -992,6 +1173,7 @@ const showReceipt = (session) => {
   showToast(`Viewing details for session #${session.id}`);
 };
 
+// Map logic
 function initMap() {
   if (leafletMap) {
     mapLoading.value = false;
@@ -1006,7 +1188,6 @@ function initMap() {
     }
     import('leaflet').then((L) => {
       L = L.default;
-      // Fix default marker icons in Vite/SPA (wrong paths otherwise)
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -1016,7 +1197,7 @@ function initMap() {
       try {
         leafletMap = L.map(mapRef.value).setView([3.1579, 101.7116], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          attribution: '&copy; OpenStreetMap',
         }).addTo(leafletMap);
         stations.value
           .filter((s) => s.lat != null && s.lng != null)
@@ -1030,12 +1211,10 @@ function initMap() {
         setTimeout(() => { leafletMap.invalidateSize(); }, 100);
         mapLoading.value = false;
       } catch (err) {
-        console.error('Map init error:', err);
         mapError.value = true;
         mapLoading.value = false;
       }
     }).catch((err) => {
-      console.error('Leaflet load error:', err);
       mapError.value = true;
       mapLoading.value = false;
     });
@@ -1052,10 +1231,25 @@ watch(activeTab, (tab) => {
   }
 });
 
+// Watch search to trigger refetch
+watch(sessionSearch, () => {
+  sessionPage.value = 1;
+  fetchSessions(1);
+});
+
 onMounted(() => {
     fetchSessions();
     fetchVehicles();
     fetchWallet();
+    fetchStations();
+    fetchNotifications();
+    fetchBilling();
+
+    // Refresh every 30s
+    setInterval(() => {
+      fetchNotifications();
+      if (!activeSession.value) fetchSessions(sessionPage.value);
+    }, 30000);
 });
 </script>
 

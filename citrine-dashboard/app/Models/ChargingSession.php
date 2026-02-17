@@ -19,6 +19,13 @@ class ChargingSession extends Model
         'status',
     ];
 
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+        'kwh_consumed' => 'float',
+        'total_cost' => 'float',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);

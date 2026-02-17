@@ -1,5 +1,5 @@
 <script setup>
-import { } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { Zap } from 'lucide-vue-next';
 </script>
 

@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class PromoCode extends Model
+{
+    protected $fillable = ['code', 'type', 'value', 'expires_at', 'usage_limit', 'used_count', 'min_spend'];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'value' => 'decimal:2',
+        'min_spend' => 'decimal:2',
+    ];
+}

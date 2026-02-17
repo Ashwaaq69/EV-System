@@ -6,5 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Reservation extends Model
 {
-    //
+    protected $fillable = ['user_id', 'charge_point_id', 'start_time', 'end_time', 'status'];
+
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function chargePoint()
+    {
+        return $this->belongsTo(ChargePoint::class);
+    }
 }

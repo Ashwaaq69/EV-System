@@ -24,17 +24,27 @@
             <CardTitle>Charging Sessions</CardTitle>
             <CardDescription>Comprehensive log of user interactions</CardDescription>
           </div>
-          <div class="flex items-center gap-2">
-            <label class="text-xs text-zinc-500 uppercase font-bold tracking-tighter">View</label>
-            <select 
-              v-model="perPage" 
-              @change="updatePerPage"
-              class="rounded-md border-zinc-200 py-1 text-xs dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 focus:ring-[#FF2D20]"
-            >
-              <option :value="5">5</option>
-              <option :value="10">10</option>
-              <option :value="25">25</option>
-            </select>
+          <div class="flex items-center gap-4">
+            <div class="relative w-48 md:w-64">
+              <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+              <Input 
+                placeholder="Search transactions..." 
+                v-model="searchQuery"
+                class="pl-9 h-9 border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-zinc-500 uppercase font-bold tracking-tighter">View</label>
+              <select 
+                v-model="perPage" 
+                @change="updatePerPage"
+                class="rounded-md border-zinc-200 py-1 text-xs dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 focus:ring-[#FF2D20]"
+              >
+                <option :value="5">5</option>
+                <option :value="10">10</option>
+                <option :value="25">25</option>
+              </select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -87,16 +97,27 @@
                     </div>
                   </TableCell>
                   <TableCell class="text-right">
-                    <Button
-                      v-if="session.status === 'active'"
-                      variant="destructive"
-                      size="sm"
-                      @click="stopSession(session.id)"
-                      class="h-8 text-xs bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white transition-all"
-                    >
-                      Stop
-                    </Button>
-                    <span v-else class="text-[10px] text-zinc-400 italic">Archived</span>
+                    <div class="flex items-center justify-end gap-2">
+                       <Button
+                         v-if="session.status === 'active'"
+                         variant="destructive"
+                         size="sm"
+                         @click="stopSession(session.id)"
+                         class="h-8 text-[11px] font-bold uppercase bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white transition-all px-3"
+                       >
+                         Stop
+                       </Button>
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         @click="downloadInvoice(session)"
+                         class="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                         title="Download Receipt"
+                       >
+                         <Download class="h-4 w-4 mr-1" />
+                         <span class="text-[10px] font-bold uppercase">Receipt</span>
+                       </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="sessions.data.length === 0">
@@ -149,14 +170,16 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/Com
 import { Button } from '@/Components/ui/button';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/Components/ui/table';
 import { Badge } from '@/Components/ui/badge';
-import { Clock, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { Input } from '@/Components/ui/input';
+import { Clock, ChevronLeft, ChevronRight, MoreHorizontal, Search, Download, FileText } from 'lucide-vue-next';
+import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
   sessions: Object
 });
 
+const searchQuery = ref(new URLSearchParams(window.location.search).get('search') || '');
 const perPage = ref(props.sessions.per_page);
 
 const formatDate = (dateString) => {
@@ -170,18 +193,57 @@ const formatDate = (dateString) => {
 };
 
 const updatePerPage = () => {
-  router.get('/transactions', { per_page: perPage.value }, { preserveState: true });
+  router.get('/transactions', { 
+    per_page: perPage.value,
+    search: searchQuery.value 
+  }, { preserveState: true });
 };
 
 const navigate = (url) => {
   if (url) {
-    router.get(url, { per_page: perPage.value }, { preserveState: true });
+    const searchParams = new URLSearchParams(new URL(url, window.location.origin).search);
+    searchParams.set('per_page', perPage.value);
+    if (searchQuery.value) searchParams.set('search', searchQuery.value);
+    
+    router.get(`${url.split('?')[0]}?${searchParams.toString()}`, {}, { preserveState: true });
   }
 };
+
+// Debounced search
+let searchTimeout;
+watch(searchQuery, (val) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    router.get('/transactions', { 
+      per_page: perPage.value,
+      search: val 
+    }, { preserveState: true, preserveScroll: true });
+  }, 400);
+});
 
 const stopSession = (id) => {
   if (confirm('Are you sure you want to stop this charging session?')) {
     router.post(`/transactions/${id}/stop`);
+  }
+};
+
+const downloadInvoice = async (session) => {
+  try {
+    const id = session.id;
+    const url = `/transactions/${id}/invoice`;
+    const res = await axios.get(url, { responseType: 'blob' });
+    
+    const blob = res.data;
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `admin-receipt-${String(id).padStart(6, '0')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
+  } catch (err) {
+    console.error('Admin download failed:', err);
   }
 };
 </script>

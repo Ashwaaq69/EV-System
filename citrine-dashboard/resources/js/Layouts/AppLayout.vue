@@ -60,6 +60,20 @@
                 <ClipboardList class="mr-3 h-4 w-4" :class="$page.url === '/transactions' ? 'text-[#FF2D20]' : ''" />
                 Transactions
               </Link>
+
+              <Link
+                href="/users"
+                @click="navigateTo($event, '/users')"
+                :class="[
+                  'group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200',
+                  $page.url === '/users' 
+                    ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' 
+                    : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'
+                ]"
+              >
+                <Users class="mr-3 h-4 w-4" :class="$page.url === '/users' ? 'text-[#FF2D20]' : ''" />
+                Users
+              </Link>
             </template>
 
             <!-- Client Links -->
@@ -124,11 +138,11 @@
 </template>
 
 <script setup>
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Separator } from '@/Components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
-import { Zap, BarChart3, ClipboardList, LogOut } from 'lucide-vue-next';
+import { Zap, BarChart3, ClipboardList, LogOut, Users } from 'lucide-vue-next';
 
 const navigateTo = (e, href) => {
     // Check if we are in standalone mode
@@ -142,7 +156,7 @@ const navigateTo = (e, href) => {
             router.push(href);
         });
     }
-    // In Inertia mode, let the <Link> component handle it normally
+    // In Inertia mode, the <Link> component handles it via its default behavior.
 };
 
 const handleLogout = () => {

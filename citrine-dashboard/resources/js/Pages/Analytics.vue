@@ -133,11 +133,15 @@ import {
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, LineElement, PointElement, ArcElement);
 
+const props = defineProps({
+  analytics: Object
+});
+
 const metrics = [
-  { label: 'Total Revenue', value: 'RM 45,200', change: '12%', trendUp: true, icon: DollarSign },
-  { label: 'Avg Utilization', value: '68%', change: '5%', trendUp: true, icon: Activity },
-  { label: 'Energy Delivered', value: '128 MWh', change: '8%', trendUp: true, icon: Zap },
-  { label: 'Carbon Savings', value: '12.4t', change: '2%', trendUp: false, icon: Leaf },
+  { label: 'Total Revenue', value: 'RM ' + Number(props.analytics.carbonSavings.total_kwh * 1.2).toLocaleString(), change: '12%', trendUp: true, icon: DollarSign },
+  { label: 'Avg Utilization', value: props.analytics.chargerUtilisation.data[0] + '%', change: '5%', trendUp: true, icon: Activity },
+  { label: 'Energy Delivered', value: props.analytics.carbonSavings.total_kwh + ' kWh', change: '8%', trendUp: true, icon: Zap },
+  { label: 'Carbon Savings', value: props.analytics.carbonSavings.carbon_saved_kg + 'kg', change: '2%', trendUp: true, icon: Leaf },
 ];
 
 const chartOptions = {
@@ -167,36 +171,36 @@ const doughnutOptions = {
 };
 
 const revenueData = {
-  labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  labels: props.analytics.revenuePerStation.labels,
   datasets: [{
     label: 'Revenue',
     backgroundColor: '#FF2D20',
     borderRadius: 4,
-    data: [450, 590, 800, 810, 560, 550, 400]
+    data: props.analytics.revenuePerStation.data
   }]
 };
 
 const utilizationData = {
-  labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+  labels: props.analytics.peakUsage.labels,
   datasets: [{
     label: 'Utilization',
     borderColor: '#6366f1',
     backgroundColor: 'rgba(99, 102, 241, 0.1)',
     fill: true,
     tension: 0.4,
-    data: [20, 15, 65, 80, 75, 50]
+    data: props.analytics.peakUsage.data
   }]
 };
 
 const energyData = {
-  labels: ['1 Jan', '2 Jan', '3 Jan', '4 Jan', '5 Jan', '6 Jan', '7 Jan'],
+  labels: props.analytics.energyConsumption.labels,
   datasets: [{
     label: 'Energy (kWh)',
     borderColor: '#FF2D20',
     backgroundColor: 'rgba(255, 45, 32, 0.1)',
     fill: true,
     tension: 0.4,
-    data: [1200, 1900, 1700, 2100, 2400, 1800, 2600]
+    data: props.analytics.energyConsumption.data
   }]
 };
 
