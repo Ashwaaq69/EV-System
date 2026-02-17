@@ -75,6 +75,13 @@
               </CardHeader>
               <CardContent>
                 <div v-if="activeSession" class="space-y-4">
+                  <div class="flex items-center gap-2 mb-2 p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-100 dark:border-zinc-700">
+                    <Zap class="h-4 w-4 text-green-500" />
+                    <div class="text-xs">
+                      <p class="font-bold text-zinc-900 dark:text-white">{{ lastStationName }}</p>
+                      <p class="text-[10px] text-zinc-500 font-mono">{{ activeSession.vehicle?.brand }} {{ activeSession.vehicle?.model }} ({{ activeSession.vehicle?.plate_number }})</p>
+                    </div>
+                  </div>
                   <div class="flex justify-between items-center text-sm">
                     <span class="text-zinc-500">Energy (kWh)</span>
                     <span class="font-bold font-mono">{{ chargingData.kwh.toFixed(2) }}</span>
@@ -138,7 +145,12 @@
                 <TableBody>
                   <TableRow v-for="session in (portalSessions?.data || []).slice(0, 5)" :key="session.id">
                     <TableCell>{{ new Date(session.start_time).toLocaleDateString() }}</TableCell>
-                    <TableCell>{{ session.charge_point?.location?.name || session.charge_point?.identifier || 'Main Station' }}</TableCell>
+                    <TableCell>
+                      <div class="flex flex-col">
+                        <span class="font-medium text-xs">{{ session.charge_point?.location?.name || session.charge_point?.identifier || 'Main Station' }}</span>
+                        <span class="text-[10px] text-zinc-400">{{ session.vehicle?.brand }} {{ session.vehicle?.model }} ({{ session.vehicle?.plate_number }})</span>
+                      </div>
+                    </TableCell>
                     <TableCell>{{ session.kwh_consumed }} kWh</TableCell>
                     <TableCell class="text-right">
                       <Button variant="ghost" size="sm" class="h-8 gap-2" @click="downloadInvoice(session)">
@@ -575,7 +587,15 @@
         <TabsContent value="notifications" class="space-y-6">
            <div class="flex justify-between items-center px-1">
              <h2 class="text-xl font-bold">Latest Notifications</h2>
-             <Button variant="ghost" size="sm" class="text-blue-600 text-[10px] uppercase font-bold tracking-wider" @click="axios.post('/api/client/notifications/read').then(() => fetchNotifications())" v-if="notifications.length > 0">Mark all as read</Button>
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               class="text-blue-600 text-[10px] uppercase font-bold tracking-wider" 
+               @click="markAllAsRead" 
+               v-if="notifications.length > 0"
+             >
+               Mark all as read
+             </Button>
            </div>
            
            <div class="space-y-3">
@@ -596,8 +616,13 @@
 
                 <!-- Notifications List -->
                 <div class="space-y-3">
-                  <div v-for="n in notifications" :key="n.id" :class="['flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer', n.is_read ? 'bg-zinc-50/50 dark:bg-zinc-800/10' : 'bg-white dark:bg-zinc-900 shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-800']" @click="axios.post('/api/client/notifications/read').then(() => fetchNotifications())">
-                     <div :class="['h-10 w-10 shrink-0 rounded-full flex items-center justify-center', n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-yellow-100 text-yellow-600' : n.type === 'danger' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600']">
+                  <div 
+                    v-for="n in notifications" 
+                    :key="n.id" 
+                    :class="['flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer', n.is_read ? 'bg-zinc-50/50 dark:bg-zinc-800/10 opacity-70' : 'bg-white dark:bg-zinc-900 shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-800 border-l-4 border-l-blue-500']" 
+                    @click="markAsRead(n)"
+                  >
+                     <div :class="['h-10 w-10 shrink-0 rounded-full flex items-center justify-center', n.is_read ? 'bg-zinc-100 text-zinc-400' : (n.type === 'success' ? 'bg-green-100 text-green-600' : n.type === 'warning' ? 'bg-yellow-100 text-yellow-600' : n.type === 'danger' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600')]">
                         <Zap class="h-5 w-5" v-if="n.type === 'success'" />
                         <Bell class="h-5 w-5" v-else />
                      </div>
@@ -766,7 +791,7 @@ function navigateToProfile(e) {
 
 // State
 const activeTab = ref('overview');
-const activeSession = ref(false);
+const activeSession = ref(null);
 const loading = ref(false);
 const selectedStation = ref(null);
 const currentSessionId = ref(null);
@@ -815,6 +840,26 @@ const fetchNotifications = async () => {
     console.error('Failed to fetch notifications:', err);
   }
 };
+
+async function markAllAsRead() {
+  try {
+    await axios.post('/api/client/notifications/read');
+    await fetchNotifications();
+    showToast('All notifications marked as read');
+  } catch (err) {
+    console.error('Failed to mark all as read:', err);
+  }
+}
+
+async function markAsRead(notification) {
+  if (notification.is_read) return;
+  try {
+    await axios.post('/api/client/notifications/read');
+    await fetchNotifications();
+  } catch (err) {
+    console.error('Failed to mark as read:', err);
+  }
+}
 
 async function enablePush() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
@@ -947,6 +992,26 @@ const fetchSessions = async (page = 1) => {
         });
         portalSessions.value = response.data;
         sessionPage.value = response.data.current_page;
+        
+        // Auto-detect active session if not already set
+        if (!activeSession.value) {
+          const active = response.data.data.find(s => s.status === 'active');
+          if (active) {
+            activeSession.value = active;
+            currentSessionId.value = active.id;
+            lastStationName.value = active.charge_point?.location?.name || active.charge_point?.identifier || 'Main Station';
+            
+            // Resume monitoring (simulated)
+            const startTime = new Date(active.start_time);
+            chargingData.value = { 
+              kwh: active.kwh_consumed, 
+              cost: active.total_cost, 
+              time: '00:00:00',
+              startTime: startTime
+            };
+            startMonitoring();
+          }
+        }
     } catch (error) {
         console.error('Failed to fetch sessions:', error);
     }
@@ -1063,25 +1128,32 @@ const startChargingMock = async (station) => {
      activeTab.value = 'wallet';
      return;
   }
+
+  if (!defaultVehicle.value) {
+     showToast('Please register a vehicle before charging', 'error');
+     activeTab.value = 'vehicles';
+     return;
+  }
   
   try {
     const response = await axios.post('/api/client/sessions', {
-      charge_point_id: station.id
+      charge_point_id: station.id,
+      vehicle_id: defaultVehicle.value.id
     });
     
     currentSessionId.value = response.data.id;
-    activeSession.value = true;
+    activeSession.value = response.data;
     lastStationName.value = station.name;
     selectedStation.value = null;
     activeTab.value = 'overview';
     chargingData.value = { kwh: 0, cost: 0, time: '00:00:00', startTime: new Date() };
     startMonitoring();
-    showToast('Charging session started');
+    showToast(`Charging started for ${defaultVehicle.value.brand} ${defaultVehicle.value.model}`);
     fetchSessions(); // Update history
     fetchNotifications();
   } catch (error) {
     console.error('Failed to start session:', error);
-    showToast('Failed to start session.', 'error');
+    showToast(error.response?.data?.message || 'Failed to start session.', 'error');
   }
 };
 
@@ -1096,7 +1168,7 @@ const stopCharging = async () => {
       cost: finalCost
     });
     
-    activeSession.value = false;
+    activeSession.value = null;
     const oldId = currentSessionId.value;
     currentSessionId.value = null;
     showToast(`Session completed. RM ${finalCost.toFixed(2)} deducted.`);
@@ -1145,28 +1217,10 @@ const setDefaultVehicle = async (vehicle) => {
   }
 };
 
-const downloadInvoice = async (session) => {
-  try {
-    const id = session.id;
-    const url = `/api/client/sessions/${id}/invoice`;
-    const res = await axios.get(url, { responseType: 'blob' });
-    
-    // axios returns blob directly when responseType is 'blob'
-    const blob = res.data;
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `receipt-${String(id).padStart(6, '0')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(downloadUrl);
-    
-    showToast('Receipt downloaded');
-  } catch (err) {
-    console.error('Download failed:', err);
-    showToast('Download failed. Please try again.', 'error');
-  }
+const downloadInvoice = (session) => {
+  const url = `/api/client/sessions/${session.id}/invoice`;
+  window.open(url, '_blank');
+  showToast('Opening receipt...');
 };
 
 const showReceipt = (session) => {

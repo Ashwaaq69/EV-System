@@ -136,7 +136,7 @@ class ClientApiController extends Controller
         $user = Auth::user();
         $search = $request->input('search');
 
-        $query = ChargingSession::with('chargePoint.location')
+        $query = ChargingSession::with(['chargePoint.location', 'vehicle'])
             ->where('user_id', $user->id);
 
         if ($search) {
@@ -146,6 +146,10 @@ class ClientApiController extends Controller
                        ->orWhereHas('location', function($loc) use ($search) {
                            $loc->where('name', 'like', "%{$search}%");
                        });
+                })->orWhereHas('vehicle', function($v) use ($search) {
+                    $v->where('brand', 'like', "%{$search}%")
+                      ->orWhere('model', 'like', "%{$search}%")
+                      ->orWhere('plate_number', 'like', "%{$search}%");
                 });
             });
         }
@@ -231,29 +235,40 @@ class ClientApiController extends Controller
      */
     public function downloadInvoice($id)
     {
-        $session = ChargingSession::with('chargePoint.location')
+        $session = ChargingSession::with(['chargePoint.location', 'vehicle', 'transactions'])
             ->where('user_id', Auth::id())
             ->where('id', (int)$id)
             ->firstOrFail();
 
+        $txn = $session->transactions->first();
+        
+        // Find subscription to get discount percentage if applicable
+        $subscription = UserSubscription::with('plan')
+            ->where('user_id', Auth::id())
+            ->where('status', 'active')
+            ->first();
+
         $data = [
-            'type' => 'RECEIPT',
             'session_id' => str_pad((string) $session->id, 6, '0', STR_PAD_LEFT),
             'date' => $session->start_time ? $session->start_time->format('M d, Y') : 'N/A',
             'time' => $session->start_time ? $session->start_time->format('H:i') : 'N/A',
             'location' => $session->chargePoint?->location?->name ?? 'N/A',
             'address' => $session->chargePoint?->location?->address ?? '',
             'charger' => $session->chargePoint?->identifier ?? 'N/A',
+            'vehicle_name' => $session->vehicle ? ($session->vehicle->brand . ' ' . $session->vehicle->model) : 'Unknown Vehicle',
+            'vehicle_plate' => $session->vehicle?->plate_number ?? 'N/A',
             'energy_kwh' => (float) $session->kwh_consumed,
+            'subtotal' => (float) ($txn->subtotal ?? $session->total_cost),
+            'discount' => (float) ($txn->discount_amount ?? 0),
+            'discount_percentage' => $subscription?->plan->discount_percentage ?? 0,
+            'tax' => (float) ($txn->tax_amount ?? 0),
             'total_rm' => (float) $session->total_cost,
             'currency' => 'RM',
-            'tax' => 0.00,
-            'status' => strtoupper($session->status)
+            'status' => strtoupper($session->status),
+            'duration' => $session->end_time ? $session->start_time->diffForHumans($session->end_time, true) : 'N/A'
         ];
 
-        return response()->json($data)
-            ->header('Content-Type', 'application/json')
-            ->header('Content-Disposition', 'attachment; filename="receipt-' . $data['session_id'] . '.json"');
+        return view('receipt', $data);
     }
 
     /**
@@ -344,14 +359,17 @@ class ClientApiController extends Controller
     public function startSession(Request $request)
     {
         $request->validate([
-            'charge_point_id' => 'required|exists:charge_points,id'
+            'charge_point_id' => 'required|exists:charge_points,id',
+            'vehicle_id' => 'required|exists:ev_vehicles,id'
         ]);
 
         $cp = ChargePoint::findOrFail($request->charge_point_id);
+        $vehicle = EvVehicle::where('user_id', Auth::id())->findOrFail($request->vehicle_id);
 
         $session = ChargingSession::create([
             'user_id' => Auth::id(),
             'charge_point_id' => $cp->id,
+            'vehicle_id' => $vehicle->id,
             'start_time' => now(),
             'status' => 'active',
             'kwh_consumed' => 0,
@@ -361,11 +379,11 @@ class ClientApiController extends Controller
         Notification::create([
             'user_id' => Auth::id(),
             'title' => 'Charging Started',
-            'message' => "Your charging session has started at {$cp->identifier}.",
+            'message' => "Your charging session for {$vehicle->brand} {$vehicle->model} ({$vehicle->plate_number}) has started at {$cp->identifier}.",
             'type' => 'success'
         ]);
 
-        return response()->json($session);
+        return response()->json($session->load('vehicle'));
     }
 
     /**

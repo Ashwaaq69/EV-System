@@ -12,6 +12,7 @@ class ChargingSession extends Model
     protected $fillable = [
         'user_id',
         'charge_point_id',
+        'vehicle_id',
         'start_time',
         'end_time',
         'kwh_consumed',
@@ -34,6 +35,11 @@ class ChargingSession extends Model
     public function chargePoint()
     {
         return $this->belongsTo(ChargePoint::class);
+    }
+
+    public function vehicle()
+    {
+        return $this->belongsTo(EvVehicle::class, 'vehicle_id');
     }
 
     public function transactions()

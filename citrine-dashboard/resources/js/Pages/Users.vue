@@ -50,9 +50,20 @@
         </Card>
       </section>
 
-      <Card class="border-none shadow-sm dark:bg-zinc-900">
-        <CardHeader>
-          <CardTitle>User Directory</CardTitle>
+      <Card class="border-none shadow-sm dark:bg-zinc-900 mt-8">
+        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-7">
+          <div>
+            <CardTitle class="text-xl font-bold">User Directory</CardTitle>
+            <p class="text-sm text-zinc-500">Manage your system members</p>
+          </div>
+          <div class="relative w-64">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              v-model="searchQuery"
+              placeholder="Search users..."
+              class="pl-9 h-9 bg-zinc-50 dark:bg-zinc-800 border-none focus-visible:ring-1 focus-visible:ring-[#FF2D20]"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -65,7 +76,7 @@
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="user in users" :key="user.id" class="group border-zinc-100 dark:border-zinc-800">
+              <TableRow v-for="user in paginatedUsers" :key="user.id" class="group border-zinc-100 dark:border-zinc-800">
                 <TableCell>
                   <div class="flex items-center gap-3">
                     <Avatar class="h-8 w-8">
@@ -101,8 +112,53 @@
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
+              <TableRow v-if="filteredUsers.length === 0">
+                <TableCell colspan="4" class="py-12 text-center text-zinc-500">
+                  No users found matching "{{ searchQuery }}"
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
+
+          <!-- Pagination -->
+          <div v-if="filteredUsers.length > 0" class="flex items-center justify-between mt-6">
+            <p class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+              Showing {{ rangeStart }}-{{ rangeEnd }} of {{ filteredUsers.length }}
+            </p>
+            <div class="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                class="h-8 w-8 rounded-lg border-zinc-200 dark:border-zinc-800" 
+                :disabled="currentPage === 1"
+                @click="currentPage--"
+              >
+                <ChevronLeft class="h-4 w-4" />
+              </Button>
+              
+              <Button 
+                v-for="page in totalPages" 
+                :key="page"
+                variant="outline" 
+                size="sm" 
+                :class="['h-8 min-w-[32px] rounded-lg border-zinc-200 dark:border-zinc-800 font-bold text-[10px]', 
+                        currentPage === page ? 'bg-[#FF2D20] text-white border-none' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800']"
+                @click="currentPage = page"
+              >
+                {{ page }}
+              </Button>
+
+              <Button 
+                variant="outline" 
+                size="icon" 
+                class="h-8 w-8 rounded-lg border-zinc-200 dark:border-zinc-800" 
+                :disabled="currentPage === totalPages"
+                @click="currentPage++"
+              >
+                <ChevronRight class="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -167,7 +223,7 @@ import {
 } from '@/Components/ui/dropdown-menu';
 import { 
   Users as UsersIcon, UserPlus, ShieldCheck, User as UserIcon, 
-  MoreHorizontal, Trash 
+  MoreHorizontal, Trash, Search, ChevronLeft, ChevronRight 
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -177,6 +233,28 @@ const props = defineProps({
 const authId = computed(() => usePage().props.auth.user.id);
 const adminCount = computed(() => props.users.filter(u => u.role === 'admin').length);
 const clientCount = computed(() => props.users.filter(u => u.role === 'client').length);
+
+// Filtering and Pagination
+const searchQuery = ref('');
+const currentPage = ref(1);
+const itemsPerPage = 6;
+
+const filteredUsers = computed(() => {
+  return props.users.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
+const totalPages = computed(() => Math.ceil(filteredUsers.value.length / itemsPerPage));
+
+const paginatedUsers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  return filteredUsers.value.slice(start, start + itemsPerPage);
+});
+
+const rangeStart = computed(() => filteredUsers.value.length === 0 ? 0 : (currentPage.value - 1) * itemsPerPage + 1);
+const rangeEnd = computed(() => Math.min(currentPage.value * itemsPerPage, filteredUsers.value.length));
 
 const isModalOpen = ref(false);
 

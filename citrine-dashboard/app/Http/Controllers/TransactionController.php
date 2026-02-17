@@ -51,26 +51,34 @@ class TransactionController extends Controller
 
     public function downloadInvoice($id)
     {
-        $session = ChargingSession::with(['user', 'chargePoint.location'])
+        $session = ChargingSession::with(['user', 'chargePoint.location', 'vehicle', 'transactions'])
             ->where('id', (int)$id)
             ->firstOrFail();
 
+        $txn = $session->transactions->first();
+
         $data = [
-            'type' => 'RECEIPT',
             'session_id' => str_pad((string) $session->id, 6, '0', STR_PAD_LEFT),
             'customer' => $session->user?->name ?? 'Unknown',
             'date' => $session->start_time ? $session->start_time->format('M d, Y') : 'N/A',
             'time' => $session->start_time ? $session->start_time->format('H:i') : 'N/A',
             'location' => $session->chargePoint?->location?->name ?? 'N/A',
+            'address' => $session->chargePoint?->location?->address ?? '',
             'charger' => $session->chargePoint?->identifier ?? 'N/A',
+            'vehicle_name' => $session->vehicle ? ($session->vehicle->brand . ' ' . $session->vehicle->model) : 'Unknown Vehicle',
+            'vehicle_plate' => $session->vehicle?->plate_number ?? 'N/A',
             'energy_kwh' => (float) $session->kwh_consumed,
+            'subtotal' => (float) ($txn->subtotal ?? $session->total_cost),
+            'discount' => (float) ($txn->discount_amount ?? 0),
+            'discount_percentage' => 0, // Admin view doesn't necessarily need sub calculation
+            'tax' => (float) ($txn->tax_amount ?? 0),
             'total_rm' => (float) $session->total_cost,
-            'status' => strtoupper($session->status)
+            'currency' => 'RM',
+            'status' => strtoupper($session->status),
+            'duration' => $session->end_time ? $session->start_time->diffForHumans($session->end_time, true) : 'N/A'
         ];
 
-        return response()->json($data)
-            ->header('Content-Type', 'application/json')
-            ->header('Content-Disposition', 'attachment; filename="admin-receipt-' . $data['session_id'] . '.json"');
+        return view('receipt', $data);
     }
 
     public function stopSession($id)

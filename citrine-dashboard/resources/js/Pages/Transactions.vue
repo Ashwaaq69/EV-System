@@ -227,23 +227,8 @@ const stopSession = (id) => {
   }
 };
 
-const downloadInvoice = async (session) => {
-  try {
-    const id = session.id;
-    const url = `/transactions/${id}/invoice`;
-    const res = await axios.get(url, { responseType: 'blob' });
-    
-    const blob = res.data;
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `admin-receipt-${String(id).padStart(6, '0')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(downloadUrl);
-  } catch (err) {
-    console.error('Admin download failed:', err);
-  }
+const downloadInvoice = (session) => {
+  const url = `/transactions/${session.id}/invoice`;
+  window.open(url, '_blank');
 };
 </script>
