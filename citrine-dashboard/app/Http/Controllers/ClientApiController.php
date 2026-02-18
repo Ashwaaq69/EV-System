@@ -502,8 +502,12 @@ class ClientApiController extends Controller
         
         $wallet = Wallet::where('user_id', Auth::id())->first();
         if (!$wallet || $wallet->balance < $plan->price) {
-            return response()->json(['message' => 'Insufficient balance to subscribe.'], 400);
+            $currentBalance = $wallet ? $wallet->balance : 0;
+            return response()->json([
+                'message' => "Insufficient balance. Your balance is RM {$currentBalance}, but the {$plan->name} costs RM {$plan->price}."
+            ], 400);
         }
+
         
         $wallet->decrement('balance', $plan->price);
         

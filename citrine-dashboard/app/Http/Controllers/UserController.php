@@ -45,6 +45,35 @@ class UserController extends Controller
     }
 
     /**
+     * Update the specified user in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'role' => ['required', 'string', 'in:admin,client'],
+            'password' => ['nullable', Password::defaults()],
+        ]);
+
+        $userData = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+        ];
+
+        if ($request->filled('password')) {
+            $userData['password'] = Hash::make($request->password);
+        }
+
+        $user->update($userData);
+
+        return redirect()->back()->with('success', 'User updated successfully.');
+    }
+
+    /**
      * Remove the specified user from storage.
      */
     public function destroy($id)

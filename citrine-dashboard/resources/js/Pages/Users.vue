@@ -105,6 +105,9 @@
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="w-40">
+                      <DropdownMenuItem class="text-zinc-600 dark:text-zinc-400" @click="openEditUserModal(user)">
+                        <Edit class="mr-2 h-4 w-4" /> Edit User
+                      </DropdownMenuItem>
                       <DropdownMenuItem v-if="user.id !== authId" class="text-red-600 dark:text-red-400" @click="confirmDelete(user)">
                         <Trash class="mr-2 h-4 w-4" /> Delete User
                       </DropdownMenuItem>
@@ -166,9 +169,9 @@
       <Dialog :open="isModalOpen" @update:open="isModalOpen = $event">
         <DialogContent class="sm:max-w-[425px] dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
+            <DialogTitle>{{ isEditing ? 'Edit User' : 'Add New User' }}</DialogTitle>
             <DialogDescription>
-              Create a new account for an admin or client.
+              {{ isEditing ? 'Update the user details below.' : 'Create a new account for an admin or client.' }}
             </DialogDescription>
           </DialogHeader>
           <form @submit.prevent="submitForm" class="grid gap-6 py-4">
@@ -190,13 +193,15 @@
               </select>
             </div>
             <div class="grid gap-2">
-              <Label for="password" class="text-xs font-bold uppercase tracking-wider text-zinc-500">Password</Label>
+              <Label for="password" class="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                Password {{ isEditing ? '(Leave blank to keep current)' : '' }}
+              </Label>
               <Input id="password" type="password" v-model="form.password" placeholder="••••••••" class="dark:bg-zinc-800" />
               <p v-if="form.errors.password" class="text-xs text-red-500 italic">{{ form.errors.password }}</p>
             </div>
             <DialogFooter class="mt-4">
               <Button type="submit" :disabled="form.processing" class="bg-[#FF2D20] hover:bg-[#E0261B] text-white border-none w-full shadow-lg shadow-red-200 dark:shadow-none">
-                {{ form.processing ? 'Creating...' : 'Create User Account' }}
+                {{ form.processing ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update User Account' : 'Create User Account') }}
               </Button>
             </DialogFooter>
           </form>
@@ -223,7 +228,7 @@ import {
 } from '@/Components/ui/dropdown-menu';
 import { 
   Users as UsersIcon, UserPlus, ShieldCheck, User as UserIcon, 
-  MoreHorizontal, Trash, Search, ChevronLeft, ChevronRight 
+  MoreHorizontal, Trash, Search, ChevronLeft, ChevronRight, Edit
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -257,6 +262,8 @@ const rangeStart = computed(() => filteredUsers.value.length === 0 ? 0 : (curren
 const rangeEnd = computed(() => Math.min(currentPage.value * itemsPerPage, filteredUsers.value.length));
 
 const isModalOpen = ref(false);
+const isEditing = ref(false);
+const editingUserId = ref(null);
 
 const form = useForm({
   name: '',
@@ -266,18 +273,41 @@ const form = useForm({
 });
 
 const openAddUserModal = () => {
+  isEditing.value = false;
+  editingUserId.value = null;
   form.reset();
   form.clearErrors();
   isModalOpen.value = true;
 };
 
+const openEditUserModal = (user) => {
+  isEditing.value = true;
+  editingUserId.value = user.id;
+  form.reset();
+  form.clearErrors();
+  form.name = user.name;
+  form.email = user.email;
+  form.role = user.role;
+  form.password = ''; // Always empty for edit, will only update if filled
+  isModalOpen.value = true;
+};
+
 const submitForm = () => {
-  form.post('/users', {
-    onSuccess: () => {
-      isModalOpen.value = false;
-      form.reset();
-    },
-  });
+  if (isEditing.value) {
+    form.patch(`/users/${editingUserId.value}`, {
+      onSuccess: () => {
+        isModalOpen.value = false;
+        form.reset();
+      },
+    });
+  } else {
+    form.post('/users', {
+      onSuccess: () => {
+        isModalOpen.value = false;
+        form.reset();
+      },
+    });
+  }
 };
 
 const confirmDelete = (user) => {
