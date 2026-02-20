@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.DS_Store
+*.log
+citrineos-core/Server/data/
+citrine-dashboard/storage/
+citrine-dashboard/vendor/
+citrine-dashboard/.env
+citrineos-core/.env
