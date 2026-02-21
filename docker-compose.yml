@@ -40,7 +40,7 @@ services:
       start_period: 60s
 
   citrine:
-    image: citrineos-citrine:latest
+    image: ghcr.io/citrineos/citrineos-server:latest
     volumes:
       - ./citrineos-core/Server/data:/data
 
