@@ -474,7 +474,7 @@
 
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Plan -->
-              <Card class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
+              <Card v-if="activeSubscription" class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
                   <div class="flex justify-between items-start">
                     <div>
                       <Badge variant="default" class="bg-blue-600 mb-2">ACTIVE PLAN</Badge>
