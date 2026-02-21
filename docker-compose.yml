@@ -1,42 +1,33 @@
-# SPDX-FileCopyrightText: 2025 Contributors to the CitrineOS Project
-#
-# SPDX-License-Identifier: Apache-2.0
 services:
-  amqp-broker:
-    image: rabbitmq:3-management
-    ports:
-      - 15672:15672
-      - 5672:5672
-    environment:
-      RABBITMQ_DEFAULT_USER: 'guest'
-      RABBITMQ_DEFAULT_PASS: 'guest'
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK_RELATIVE: 0.9
-    volumes:
-      - ./citrineos-core/Server/data/rabbitmq:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 15s
-      retries: 10
-      start_period: 60s
-
   ocpp-db:
     image: postgis/postgis:16-3.5
-    platform: linux/amd64
-    ports:
-      - 5432:5432
-    restart: always
-    volumes:
-      - ./citrineos-core/Server/data/postgresql/pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: citrine
       POSTGRES_USER: citrine
-      POSTGRES_PASSWORD: 'citrine'
+      POSTGRES_PASSWORD: citrine
+    volumes:
+      - ./citrineos-core/Server/data/postgres:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
     healthcheck:
-      test: 'pg_isready --username=citrine'
+      test: ["CMD-SHELL", "pg_isready -U citrine -d citrine"]
       interval: 10s
+      timeout: 5s
+      retries: 5
+
+  amqp-broker:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
       timeout: 10s
-      retries: 10
+      retries: 5
       start_period: 60s
 
   citrine:
@@ -50,22 +41,27 @@ services:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
-      DB_STRATEGY: 'migrate'
-      BOOTSTRAP_CITRINEOS_DATABASE_HOST: 'ocpp-db'
-      BOOTSTRAP_CITRINEOS_CONFIG_FILENAME: 'config.json'
-      BOOTSTRAP_CITRINEOS_FILE_ACCESS_TYPE: 'local'
-      BOOTSTRAP_CITRINEOS_FILE_ACCESS_LOCAL_DEFAULT_FILE_PATH: '/data'
+      AWS_S3_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      DB_HOST: ocpp-db
+      DB_PORT: 5432
+      DB_DATABASE: citrine
+      DB_USERNAME: citrine
+      DB_PASSWORD: citrine
+      AMQP_HOST: amqp-broker
+      AMQP_PORT: 5672
+      AMQP_USER: guest
+      AMQP_PASSWORD: guest
     depends_on:
       ocpp-db:
         condition: service_healthy
       amqp-broker:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const net = require('net'); const client = net.createConnection(8080, '127.0.0.1', () => { client.end(); process.exit(0); }); client.on('error', () => process.exit(1)); client.setTimeout(5000, () => { client.destroy(); process.exit(1); });\""]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
-      timeout: 15s
+      timeout: 10s
       retries: 5
       start_period: 120s
     ports:
@@ -140,7 +136,7 @@ services:
       context: ./citrine-dashboard
       dockerfile: Dockerfile
     ports:
-      - "8001:8000"
+      - "8181:8000"
     environment:
       - APP_ENV=docker
       - APP_KEY=base64:8TkVpFuY8n4cBOw94S3seyF7NShADWEFr6AH0OYfs2Y=
