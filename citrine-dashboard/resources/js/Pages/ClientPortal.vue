@@ -468,7 +468,10 @@
                    <CreditCard class="h-8 w-8 mx-auto mb-2 text-zinc-200 dark:text-zinc-700" />
                    <p class="text-xs">No payment methods added yet</p>
                    <p class="text-[10px] mt-1">Add a card to enable quick top-ups</p>
-                 </div>
+                  </div>
+                </Card>
+              </div>
+
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Plan -->
               <Card class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
