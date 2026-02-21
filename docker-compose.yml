@@ -79,7 +79,7 @@ services:
       - 10000-10500:10000-10500 
 
   minio:
-    image: minio/minio
+    image: quay.io/minio/minio:latest
     container_name: minio
     ports:
       - '9000:9000'
@@ -91,7 +91,7 @@ services:
       MINIO_SERVER_URL: http://localhost:9000
     volumes:
       - ./citrineos-core/Server/data/minio:/data
-    command: minio server /data --console-address ":9001"
+    command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
