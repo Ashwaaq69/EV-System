@@ -20,13 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS if the APP_URL starts with https
-        if (str_starts_with(config('app.url'), 'https://')) {
+        // Force HTTPS based on APP_URL or FORCE_HTTPS env
+        if (str_starts_with(config('app.url'), 'https://') || env('FORCE_HTTPS') === true || env('FORCE_HTTPS') === 'true') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
-        }
-
-        if (env('FORCE_HTTPS') === true || env('FORCE_HTTPS') === 'true') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            
             if (config('app.url')) {
                 \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
             }
