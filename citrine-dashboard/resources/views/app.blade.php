@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     @auth
         @if(auth()->user()->role === 'client')
             <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cpath fill='%2342b883' d='M78.8,10L64,35.4L49.2,10H0l64,110l64-110H78.8z'/%3E%3Cpath fill='%2335495e' d='M78.8,10L64,35.4L49.2,10H25.6L64,76l38.4-66H78.8z'/%3E%3C/svg%3E">
