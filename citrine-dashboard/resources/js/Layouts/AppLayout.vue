@@ -5,8 +5,8 @@
       <div class="flex h-full flex-col">
         <div class="flex h-16 items-center px-6">
           <Link 
-            :href="$page.props.auth.user.role === 'admin' ? '/dashboard' : '/client/portal'"
-            @click="navigateTo($event, $page.props.auth.user.role === 'admin' ? '/dashboard' : '/client/portal')"
+            :href="$page.props.auth?.user?.role === 'admin' ? '/dashboard' : '/client/portal'"
+            @click="navigateTo($event, $page.props.auth?.user?.role === 'admin' ? '/dashboard' : '/client/portal')"
             class="text-xl font-bold tracking-tighter text-[#FF2D20] flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <div class="w-2 h-6 bg-[#FF2D20] rounded-full"></div>
@@ -18,7 +18,7 @@
           <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-3 mb-2">Main Menu</p>
           <nav class="space-y-1">
             <!-- Admin Links -->
-            <template v-if="$page.props.auth.user.role === 'admin'">
+            <template v-if="$page.props.auth?.user?.role === 'admin'">
               <Link
                 href="/dashboard"
                 @click="navigateTo($event, '/dashboard')"
@@ -101,17 +101,17 @@
           <div class="flex items-center justify-between group">
             <div class="flex items-center gap-3">
               <Avatar class="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
-                <AvatarImage :src="`https://avatar.vercel.sh/${$page.props.auth.user.email}.png`" />
+                <AvatarImage :src="`https://avatar.vercel.sh/${$page.props.auth?.user?.email}.png`" />
                 <AvatarFallback class="bg-[#FF2D20] text-white font-bold">
                   {{ $page.props.auth.user.name?.charAt(0) || 'U' }}
                 </AvatarFallback>
               </Avatar>
               <div class="text-xs">
                 <p class="font-semibold text-zinc-900 dark:text-white truncate max-w-[100px]">
-                  {{ $page.props.auth.user.name }}
+                  {{ $page.props.auth?.user?.name }}
                 </p>
                 <p class="text-zinc-500 dark:text-zinc-400 truncate max-w-[100px]">
-                  {{ $page.props.auth.user.email }}
+                  {{ $page.props.auth?.user?.email }}
                 </p>
               </div>
             </div>
