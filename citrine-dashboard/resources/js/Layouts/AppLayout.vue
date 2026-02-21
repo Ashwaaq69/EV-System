@@ -116,13 +116,25 @@
               </div>
             </div>
             
-            <button
-              @click="handleLogout"
-              class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-[#FF2D20] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200"
-              title="Logout"
-            >
-              <LogOut class="h-4 w-4" />
-            </button>
+            <div class="flex items-center gap-1">
+              <!-- Dark Mode Toggle -->
+              <button
+                @click="toggleDark"
+                class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all duration-200"
+                :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+              >
+                <Moon v-if="!isDark" class="h-4 w-4" />
+                <Sun v-else class="h-4 w-4" />
+              </button>
+              <!-- Logout -->
+              <button
+                @click="handleLogout"
+                class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-[#FF2D20] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200"
+                title="Logout"
+              >
+                <LogOut class="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -138,11 +150,35 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import { Button } from '@/Components/ui/button';
 import { Separator } from '@/Components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
-import { Zap, BarChart3, ClipboardList, LogOut, Users } from 'lucide-vue-next';
+import { Zap, BarChart3, ClipboardList, LogOut, Users, Moon, Sun } from 'lucide-vue-next';
+
+// Dark Mode
+const isDark = ref(false);
+
+onMounted(() => {
+    // Restore saved preference
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        isDark.value = true;
+    }
+});
+
+const toggleDark = () => {
+    isDark.value = !isDark.value;
+    if (isDark.value) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    }
+};
 
 const navigateTo = (e, href) => {
     // Check if we are in standalone mode

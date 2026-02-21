@@ -392,9 +392,9 @@
                     <h3 class="text-4xl font-bold mt-1">RM {{ wallet.balance.toFixed(2) }}</h3>
                  </div>
                  <div class="z-10 flex flex-col gap-1">
-                    <p class="text-[10px] text-zinc-500 uppercase tracking-widest">Linked Card</p>
-                    <p class="text-xs font-mono">•••• 4592</p>
-                 </div>
+                     <p class="text-[10px] text-zinc-500 uppercase tracking-widest">Linked Card</p>
+                     <p class="text-xs font-mono">{{ defaultCard ? '•••• ' + defaultCard.last4 : 'No card linked' }}</p>
+                  </div>
                  <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-[#FF2D20] rounded-full blur-[80px] opacity-20"></div>
               </Card>
 
@@ -417,21 +417,64 @@
                  </div>
               </Card>
 
-              <!-- Promo Code -->
-              <Card class="border shadow-sm p-4 space-y-2">
-                <h3 class="font-bold text-sm">Promo Code</h3>
-                <div class="flex gap-2">
-                   <Input placeholder="Enter code" v-model="promoCode" class="h-8 text-xs font-mono" />
-                   <Button variant="outline" size="sm" @click="checkPromo">Apply</Button>
-                </div>
-                <p v-if="appliedPromo" class="text-[10px] text-green-600 font-bold">✓ {{ appliedPromo.code }} applied ({{ appliedPromo.type === 'percentage' ? '-' + appliedPromo.value + '%' : '-RM' + appliedPromo.value }})</p>
-              </Card>
-            </div>
+               <!-- Promo Code -->
+               <Card class="border shadow-sm p-4 space-y-2">
+                 <h3 class="font-bold text-sm">Promo Code</h3>
+                 <div class="flex gap-2">
+                    <Input placeholder="Enter code" v-model="promoCode" class="h-8 text-xs font-mono" />
+                    <Button variant="outline" size="sm" @click="checkPromo">Apply</Button>
+                 </div>
+                 <p v-if="appliedPromo" class="text-[10px] text-green-600 font-bold">✓ {{ appliedPromo.code }} applied ({{ appliedPromo.type === 'percentage' ? '-' + appliedPromo.value + '%' : '-RM' + appliedPromo.value }})</p>
+               </Card>
+
+               <!-- Payment Methods -->
+               <Card class="border shadow-sm p-4 space-y-3">
+                 <div class="flex items-center justify-between">
+                   <h3 class="font-bold text-sm flex items-center gap-2">
+                     <CreditCard class="h-4 w-4 text-[#FF2D20]" />
+                     Payment Methods
+                   </h3>
+                   <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="showAddCard = true">
+                     <Plus class="h-3 w-3" /> Add Card
+                   </Button>
+                 </div>
+                 <div v-if="savedCards.length > 0" class="space-y-2">
+                   <div
+                     v-for="card in savedCards"
+                     :key="card.id"
+                     :class="['flex items-center justify-between p-3 rounded-xl border transition-all', card.is_default ? 'border-[#FF2D20] bg-red-50/30 dark:bg-red-950/10' : 'border-zinc-200 dark:border-zinc-700']"
+                   >
+                     <div class="flex items-center gap-3">
+                       <div class="w-10 h-7 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
+                         :class="card.type === 'visa' ? 'bg-blue-600' : card.type === 'mastercard' ? 'bg-red-600' : 'bg-zinc-700'"
+                       >
+                         {{ card.type === 'visa' ? 'VISA' : card.type === 'mastercard' ? 'MC' : 'CARD' }}
+                       </div>
+                       <div>
+                         <p class="text-xs font-mono font-semibold">•••• •••• •••• {{ card.last4 }}</p>
+                         <p class="text-[10px] text-zinc-500">{{ card.holder }} · {{ card.expiry }}</p>
+                       </div>
+                     </div>
+                     <div class="flex items-center gap-1">
+                       <span v-if="card.is_default" class="text-[10px] text-[#FF2D20] font-bold uppercase tracking-wider mr-1">Default</span>
+                       <Button v-if="!card.is_default" variant="ghost" size="sm" class="h-6 text-[10px] px-2" @click="setDefaultCard(card)">Set Default</Button>
+                       <Button variant="ghost" size="sm" class="h-6 w-6 p-0 text-zinc-400 hover:text-red-500" @click="removeCard(card)">
+                         <Trash class="h-3 w-3" />
+                       </Button>
+                     </div>
+                   </div>
+                 </div>
+                 <div v-else class="text-center py-4 text-zinc-400">
+                   <CreditCard class="h-8 w-8 mx-auto mb-2 text-zinc-200 dark:text-zinc-700" />
+                   <p class="text-xs">No payment methods added yet</p>
+                   <p class="text-[10px] mt-1">Add a card to enable quick top-ups</p>
+                 </div>
+               </Card>
+             </div>
 
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Plan -->
               <Card class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
-                <div v-if="activeSubscription" class="space-y-4">
                   <div class="flex justify-between items-start">
                     <div>
                       <Badge variant="default" class="bg-blue-600 mb-2">ACTIVE PLAN</Badge>
@@ -831,6 +874,84 @@ const billingPlans = ref([]);
 const activeSubscription = ref(null);
 const promoCode = ref('');
 const appliedPromo = ref(null);
+
+// ── Payment Methods ──────────────────────────────────────
+const savedCards = ref([]);
+const showAddCard = ref(false);
+const cardSaving = ref(false);
+const cardForm = ref({ number: '', holder: '', expiry: '', cvv: '' });
+
+const defaultCard = computed(() => savedCards.value.find(c => c.is_default) ?? null);
+
+const loadCards = () => {
+  try {
+    const stored = localStorage.getItem('citrine_cards');
+    savedCards.value = stored ? JSON.parse(stored) : [];
+  } catch { savedCards.value = []; }
+};
+
+const persistCards = () => {
+  localStorage.setItem('citrine_cards', JSON.stringify(savedCards.value));
+};
+
+const detectCardType = (num) => {
+  const n = num.replace(/\s/g, '');
+  if (/^4/.test(n)) return 'visa';
+  if (/^5[1-5]/.test(n)) return 'mastercard';
+  return 'other';
+};
+
+const formatCardNumber = (val) => {
+  return val.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})/g, '$1 ').trim();
+};
+
+const onCardNumberInput = (e) => {
+  cardForm.value.number = formatCardNumber(e.target.value);
+};
+
+const onExpiryInput = (e) => {
+  let val = e.target.value.replace(/\D/g, '').slice(0, 4);
+  if (val.length >= 3) val = val.slice(0, 2) + '/' + val.slice(2);
+  cardForm.value.expiry = val;
+};
+
+const saveCard = () => {
+  const num = cardForm.value.number.replace(/\s/g, '');
+  if (num.length < 16 || !cardForm.value.holder.trim() || !cardForm.value.expiry || cardForm.value.cvv.length < 3) {
+    showToast('Please fill all card details correctly', 'error');
+    return;
+  }
+  cardSaving.value = true;
+  setTimeout(() => {
+    const newCard = {
+      id: Date.now(),
+      last4: num.slice(-4),
+      holder: cardForm.value.holder.trim().toUpperCase(),
+      expiry: cardForm.value.expiry,
+      type: detectCardType(num),
+      is_default: savedCards.value.length === 0,
+    };
+    savedCards.value.push(newCard);
+    persistCards();
+    cardForm.value = { number: '', holder: '', expiry: '', cvv: '' };
+    showAddCard.value = false;
+    cardSaving.value = false;
+    showToast('Card added successfully');
+  }, 800);
+};
+
+const setDefaultCard = (card) => {
+  savedCards.value.forEach(c => c.is_default = c.id === card.id);
+  persistCards();
+  showToast('Default card updated');
+};
+
+const removeCard = (card) => {
+  savedCards.value = savedCards.value.filter(c => c.id !== card.id);
+  if (card.is_default && savedCards.value.length > 0) savedCards.value[0].is_default = true;
+  persistCards();
+  showToast('Card removed');
+};
 
 const fetchNotifications = async () => {
   try {
