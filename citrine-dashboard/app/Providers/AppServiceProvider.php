@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
     {
         if (env('FORCE_HTTPS') === true || env('FORCE_HTTPS') === 'true') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
+            if (config('app.url')) {
+                \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+            }
+            $this->app['request']->server->set('HTTPS', 'on');
         }
         
         // Disabled prefetching to prevent Mixed Content errors on production prefetch resources
