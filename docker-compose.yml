@@ -91,7 +91,7 @@ services:
       MINIO_SERVER_URL: http://localhost:9000
     volumes:
       - ./citrineos-core/Server/data/minio:/data
-    command: ["server", "/data", "--console-address", ":9001"]
+    command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
