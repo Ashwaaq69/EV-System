@@ -434,8 +434,8 @@
                      <CreditCard class="h-4 w-4 text-[#FF2D20]" />
                      Payment Methods
                    </h3>
-                   <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="console.log('Button clicked direkt'); openAddCardModal()">
-                     <Plus class="h-3 w-3" /> Add Card
+                   <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="openAddCardModal">
+                      <Plus class="h-3 w-3" /> Add Card
                    </Button>
                  </div>
                  <div v-if="savedCards.length > 0" class="space-y-2">
@@ -452,7 +452,7 @@
                        </div>
                        <div>
                          <p class="text-xs font-mono font-semibold">•••• •••• •••• {{ card.last4 }}</p>
-                         <p class="text-xs text-zinc-500">{{ card.holder }} · {{ card.expiry }}</p>
+                         <p class="text-[10px] text-zinc-500">{{ card.holder }} · {{ card.expiry }}</p>
                        </div>
                      </div>
                      <div class="flex items-center gap-1">
@@ -930,9 +930,10 @@ const cardSaving = ref(false);
 const cardForm = ref({ number: '', holder: '', expiry: '', cvv: '' });
 
 const openAddCardModal = () => {
-      console.log('openAddCardModal called');
-      showAddCard.value = true;
-    };
+  console.log('openAddCardModal called, current showAddCard:', showAddCard.value);
+  showAddCard.value = true;
+  console.log('showAddCard set to true');
+};
 
 const defaultCard = computed(() => savedCards.value.find(c => c.is_default) ?? null);
 
