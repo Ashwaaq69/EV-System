@@ -469,41 +469,39 @@
                    <p class="text-xs">No payment methods added yet</p>
                    <p class="text-[10px] mt-1">Add a card to enable quick top-ups</p>
                  </div>
-               </Card>
-             </div>
-
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Plan -->
-              <Card v-if="activeSubscription" class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <Badge variant="default" class="bg-blue-600 mb-2">ACTIVE PLAN</Badge>
-                      <h2 class="text-2xl font-black">{{ activeSubscription.plan.name }}</h2>
-                      <p class="text-zinc-500 text-sm">Renews on {{ new Date(activeSubscription.expires_at).toLocaleDateString() }}</p>
+              <Card class="border-none shadow-sm dark:bg-zinc-900 p-6 relative overflow-hidden bg-gradient-to-br from-blue-50 to-white dark:from-zinc-900 dark:to-zinc-800">
+                  <div v-if="activeSubscription">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <Badge variant="default" class="bg-blue-600 mb-2">ACTIVE PLAN</Badge>
+                        <h2 class="text-2xl font-black">{{ activeSubscription.plan.name }}</h2>
+                        <p class="text-zinc-500 text-sm">Renews on {{ new Date(activeSubscription.expires_at).toLocaleDateString() }}</p>
+                      </div>
+                      <div class="text-right">
+                         <p class="text-2xl font-bold text-blue-600">{{ activeSubscription.plan.discount_percentage }}%</p>
+                         <p class="text-[10px] text-zinc-400 uppercase font-bold">Session Discount</p>
+                      </div>
                     </div>
-                    <div class="text-right">
-                       <p class="text-2xl font-bold text-blue-600">{{ activeSubscription.plan.discount_percentage }}%</p>
-                       <p class="text-[10px] text-zinc-400 uppercase font-bold">Session Discount</p>
+                    <div class="grid grid-cols-2 gap-4 py-4 border-t border-blue-100 dark:border-zinc-700">
+                      <div>
+                        <p class="text-[10px] text-zinc-500 uppercase">Inclusive Energy</p>
+                        <p class="font-bold">{{ activeSubscription.plan.free_kwh }} kWh / mo</p>
+                      </div>
+                      <div>
+                        <p class="text-[10px] text-zinc-500 uppercase">Status</p>
+                        <p class="font-bold text-green-600">Autopay On</p>
+                      </div>
                     </div>
                   </div>
-                  <div class="grid grid-cols-2 gap-4 py-4 border-t border-blue-100 dark:border-zinc-700">
+                  <div v-else class="py-8 text-center space-y-4">
+                    <Zap class="h-10 w-10 text-zinc-300 mx-auto" />
                     <div>
-                      <p class="text-[10px] text-zinc-500 uppercase">Inclusive Energy</p>
-                      <p class="font-bold">{{ activeSubscription.plan.free_kwh }} kWh / mo</p>
-                    </div>
-                    <div>
-                      <p class="text-[10px] text-zinc-500 uppercase">Status</p>
-                      <p class="font-bold text-green-600">Autopay On</p>
+                      <h3 class="font-bold">No Subscription Active</h3>
+                      <p class="text-sm text-zinc-500">Subscribe to get lower rates and inclusive kWh.</p>
                     </div>
                   </div>
-                </div>
-                <div v-else class="py-8 text-center space-y-4">
-                  <Zap class="h-10 w-10 text-zinc-300 mx-auto" />
-                  <div>
-                    <h3 class="font-bold">No Subscription Active</h3>
-                    <p class="text-sm text-zinc-500">Subscribe to get lower rates and inclusive kWh.</p>
-                  </div>
-                </div>
               </Card>
 
               <!-- Plans Comparison -->
