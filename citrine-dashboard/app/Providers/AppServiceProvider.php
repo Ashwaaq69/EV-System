@@ -27,6 +27,12 @@ class AppServiceProvider extends ServiceProvider
             if (config('app.url')) {
                 \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
             }
+
+            // Brute-force server variables for proxy-to-container HTTPS termination
+            $this->app['request']->server->set('HTTPS', 'on');
+            $this->app['request']->server->set('SERVER_PORT', 443);
+            $_SERVER['HTTPS'] = 'on';
+            $_SERVER['SERVER_PORT'] = 443;
         }
         
         // Disabled prefetching to prevent Mixed Content errors on production prefetch resources
