@@ -145,6 +145,8 @@ services:
       - APP_ENV=docker
       - APP_KEY=base64:8TkVpFuY8n4cBOw94S3seyF7NShADWEFr6AH0OYfs2Y=
       - APP_DEBUG=true
+      - APP_URL=https://evcharge.xperts.my
+      - FORCE_HTTPS=true
       - DB_CONNECTION=pgsql
       - DB_HOST=ocpp-db
       - DB_PORT=5432
