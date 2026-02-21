@@ -11,20 +11,20 @@ class BillingSeeder extends Seeder
 {
     public function run(): void
     {
-        // Deduplicate Subscription Plans by name (Aggressive)
-        $plans = SubscriptionPlan::all();
-        $seen = [];
-        foreach ($plans as $plan) {
-            $normalizedName = strtolower(trim($plan->name));
-            if (isset($seen[$normalizedName])) {
-                $keepId = $seen[$normalizedName];
-                // Relink subscriptions
-                \DB::table('user_subscriptions')
-                    ->where('subscription_plan_id', $plan->id)
-                    ->update(['subscription_plan_id' => $keepId]);
-                $plan->delete();
-            } else {
-                $seen[$normalizedName] = $plan->id;
+        // Deduplicate Subscription Plans by name
+        // This handles cases where duplicates already exist in production
+        $planNames = ['Bronze Tier', 'Silver Tier', 'Gold Pass'];
+        foreach ($planNames as $name) {
+            $plans = SubscriptionPlan::where('name', $name)->orderBy('id')->get();
+            if ($plans->count() > 1) {
+                $keep = $plans->shift(); // Keep the first one found
+                foreach ($plans as $duplicate) {
+                    // Update any user subscriptions pointing to the duplicate to the one we keep
+                    \DB::table('user_subscriptions')
+                        ->where('subscription_plan_id', $duplicate->id)
+                        ->update(['subscription_plan_id' => $keep->id]);
+                    $duplicate->delete();
+                }
             }
         }
 
