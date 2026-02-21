@@ -235,7 +235,7 @@ const props = defineProps({
   users: Array,
 });
 
-const authId = computed(() => usePage().props.auth.user.id);
+const authId = computed(() => usePage().props.auth?.user?.id);
 const adminCount = computed(() => props.users.filter(u => u.role === 'admin').length);
 const clientCount = computed(() => props.users.filter(u => u.role === 'client').length);
 

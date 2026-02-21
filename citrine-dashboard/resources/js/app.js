@@ -11,6 +11,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // Check if we are running the standalone Vite server (no Inertia root)
 const isStandalone = !document.getElementById('app')?.dataset.page;
+console.log('[Citrine] Booting...', isStandalone ? 'Standalone Mode' : 'Inertia Mode');
 
 if (isStandalone) {
     const app = createApp(StandaloneApp);
@@ -152,6 +153,7 @@ if (isStandalone) {
                 .use(plugin)
                 .use(ZiggyVue)
                 .mount(el);
+            console.log('[Citrine] Inertia App Mounted');
         },
         progress: {
             color: '#4B5563',

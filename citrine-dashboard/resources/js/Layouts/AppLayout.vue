@@ -103,7 +103,7 @@
               <Avatar class="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
                 <AvatarImage :src="`https://avatar.vercel.sh/${$page.props.auth?.user?.email}.png`" />
                 <AvatarFallback class="bg-[#FF2D20] text-white font-bold">
-                  {{ $page.props.auth.user.name?.charAt(0) || 'U' }}
+                  {{ $page.props.auth?.user?.name?.charAt(0) || 'U' }}
                 </AvatarFallback>
               </Avatar>
               <div class="text-xs">

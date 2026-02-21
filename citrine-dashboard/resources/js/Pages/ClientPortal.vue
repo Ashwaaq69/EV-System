@@ -1415,6 +1415,7 @@ watch(sessionSearch, () => {
 });
 
 onMounted(() => {
+    loadCards();
     fetchSessions();
     fetchVehicles();
     fetchWallet();
