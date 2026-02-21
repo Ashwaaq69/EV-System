@@ -434,7 +434,7 @@
                      <CreditCard class="h-4 w-4 text-[#FF2D20]" />
                      Payment Methods
                    </h3>
-                   <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="showAddCard = true">
+                   <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="console.log('Button clicked direkt'); openAddCardModal()">
                      <Plus class="h-3 w-3" /> Add Card
                    </Button>
                  </div>
@@ -689,8 +689,54 @@
         </TabsContent>
         </Tabs>
 
+      <!-- Add Card Modal -->
+      <Dialog v-model:open="showAddCard">
+        <DialogContent class="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Payment Method</DialogTitle>
+            <DialogDescription>Your card details are stored locally for demonstration.</DialogDescription>
+          </DialogHeader>
+          <div class="grid gap-4 py-4">
+            <div class="grid gap-2">
+              <Label>Card Number</Label>
+              <Input 
+                v-model="cardForm.number" 
+                @input="onCardNumberInput" 
+                placeholder="XXXX XXXX XXXX XXXX" 
+                maxlength="19"
+              />
+            </div>
+            <div class="grid gap-2">
+              <Label>Cardholder Name</Label>
+              <Input v-model="cardForm.holder" placeholder="Name on card" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="grid gap-2">
+                <Label>Expiry (MM/YY)</Label>
+                <Input 
+                  v-model="cardForm.expiry" 
+                  @input="onExpiryInput" 
+                  placeholder="MM/YY" 
+                  maxlength="5"
+                />
+              </div>
+              <div class="grid gap-2">
+                <Label>CVV</Label>
+                <Input v-model="cardForm.cvv" type="password" placeholder="***" maxlength="3" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" @click="showAddCard = false">Cancel</Button>
+            <Button class="bg-[#FF2D20] text-white" :disabled="cardSaving" @click="saveCard">
+              {{ cardSaving ? 'Adding...' : 'Save Card' }}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <!-- Add Vehicle Modal -->
-      <Dialog :open="showAddVehicle" @update:open="showAddVehicle = $event">
+      <Dialog v-model:open="showAddVehicle">
         <DialogContent class="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add EV Vehicle</DialogTitle>
@@ -734,7 +780,7 @@
       </Dialog>
 
       <!-- Reserve Slot Modal -->
-      <Dialog :open="showReserveModal" @update:open="showReserveModal = $event">
+      <Dialog v-model:open="showReserveModal">
         <DialogContent class="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Reserve charging slot</DialogTitle>
@@ -757,7 +803,7 @@
       </Dialog>
 
       <!-- Rating & Feedback Modal -->
-      <Dialog :open="showRatingModal" @update:open="showRatingModal = $event">
+      <Dialog v-model:open="showRatingModal">
         <DialogContent class="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Rate your session</DialogTitle>
@@ -883,17 +929,36 @@ const showAddCard = ref(false);
 const cardSaving = ref(false);
 const cardForm = ref({ number: '', holder: '', expiry: '', cvv: '' });
 
+const openAddCardModal = () => {
+  console.log('openAddCardModal called, current showAddCard:', showAddCard.value);
+  showAddCard.value = true;
+  console.log('showAddCard set to true');
+};
+
 const defaultCard = computed(() => savedCards.value.find(c => c.is_default) ?? null);
 
 const loadCards = () => {
   try {
     const stored = localStorage.getItem('citrine_cards');
+    console.log('Loading cards from storage:', stored);
     savedCards.value = stored ? JSON.parse(stored) : [];
-  } catch { savedCards.value = []; }
+    if (!Array.isArray(savedCards.value)) {
+      console.warn('Stored cards was not an array, resetting');
+      savedCards.value = [];
+    }
+  } catch (err) { 
+    console.error('Failed to load cards:', err);
+    savedCards.value = []; 
+  }
 };
 
 const persistCards = () => {
-  localStorage.setItem('citrine_cards', JSON.stringify(savedCards.value));
+  try {
+    localStorage.setItem('citrine_cards', JSON.stringify(savedCards.value));
+    console.log('Cards persisted to storage');
+  } catch (err) {
+    console.error('Failed to persist cards:', err);
+  }
 };
 
 const detectCardType = (num) => {
@@ -908,38 +973,62 @@ const formatCardNumber = (val) => {
 };
 
 const onCardNumberInput = (e) => {
-  cardForm.value.number = formatCardNumber(e.target.value);
+  const val = typeof e === 'string' ? e : e.target.value;
+  cardForm.value.number = formatCardNumber(val);
 };
 
 const onExpiryInput = (e) => {
-  let val = e.target.value.replace(/\D/g, '').slice(0, 4);
+  const targetVal = typeof e === 'string' ? e : e.target.value;
+  let val = targetVal.replace(/\D/g, '').slice(0, 4);
   if (val.length >= 3) val = val.slice(0, 2) + '/' + val.slice(2);
   cardForm.value.expiry = val;
 };
 
 const saveCard = () => {
+  console.log('Attempting to save card:', cardForm.value);
   const num = cardForm.value.number.replace(/\s/g, '');
-  if (num.length < 16 || !cardForm.value.holder.trim() || !cardForm.value.expiry || cardForm.value.cvv.length < 3) {
-    showToast('Please fill all card details correctly', 'error');
+  
+  if (num.length < 13 || num.length > 19) {
+    showToast('Invalid card number length', 'error');
     return;
   }
+  if (!cardForm.value.holder.trim()) {
+    showToast('Cardholder name is required', 'error');
+    return;
+  }
+  if (!cardForm.value.expiry || !cardForm.value.expiry.includes('/')) {
+    showToast('Invalid expiry date', 'error');
+    return;
+  }
+  if (cardForm.value.cvv.length < 3) {
+    showToast('Invalid CVV', 'error');
+    return;
+  }
+
   cardSaving.value = true;
   setTimeout(() => {
-    const newCard = {
-      id: Date.now(),
-      last4: num.slice(-4),
-      holder: cardForm.value.holder.trim().toUpperCase(),
-      expiry: cardForm.value.expiry,
-      type: detectCardType(num),
-      is_default: savedCards.value.length === 0,
-    };
-    savedCards.value.push(newCard);
-    persistCards();
-    cardForm.value = { number: '', holder: '', expiry: '', cvv: '' };
-    showAddCard.value = false;
-    cardSaving.value = false;
-    showToast('Card added successfully');
-  }, 800);
+    try {
+      const newCard = {
+        id: Date.now(),
+        last4: num.slice(-4),
+        holder: cardForm.value.holder.trim().toUpperCase(),
+        expiry: cardForm.value.expiry,
+        type: detectCardType(num),
+        is_default: savedCards.value.length === 0,
+      };
+      savedCards.value.push(newCard);
+      persistCards();
+      cardForm.value = { number: '', holder: '', expiry: '', cvv: '' };
+      showAddCard.value = false;
+      cardSaving.value = false;
+      showToast('Card added successfully');
+      console.log('Card saved successfully and modal closed');
+    } catch (err) {
+      console.error('Error in saveCard timeout:', err);
+      cardSaving.value = false;
+      showToast('Failed to save card', 'error');
+    }
+  }, 600);
 };
 
 const setDefaultCard = (card) => {
@@ -1406,6 +1495,10 @@ watch(activeTab, (tab) => {
       setTimeout(initMap, 150);
     });
   }
+});
+
+watch(showAddCard, (val) => {
+  console.log('showAddCard changed:', val);
 });
 
 // Watch search to trigger refetch
