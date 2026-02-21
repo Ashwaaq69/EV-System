@@ -21,10 +21,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if (config('app.env') === 'production' || config('app.env') === 'docker' || env('FORCE_HTTPS') === true) {
-            \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
-        Vite::prefetch(concurrency: 3);
+        
+        // Disabled prefetching to prevent Mixed Content errors on production prefetch resources
+        // Vite::prefetch(concurrency: 3);
     }
 }
 
