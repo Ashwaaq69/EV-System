@@ -11,7 +11,7 @@
           <Button variant="outline" size="sm" class="gap-2" @click="activeTab = 'notifications'">
             <Bell class="h-4 w-4" />
             <span class="hidden sm:inline">Notifications</span>
-            <Badge v-if="notifications.length > 0"S variant="destructive" class="ml-1 px-1 min-w-[1.2rem] h-5">{{ notifications.length }}</Badge>
+            <Badge v-if="notifications.length > 0" variant="destructive" class="ml-1 px-1 min-w-[1.2rem] h-5">{{ notifications.length }}</Badge>
           </Button>
           <Button size="sm" class="bg-[#FF2D20] hover:bg-[#E0261B] text-white border-none gap-2" @click="activeTab = 'wallet'">
             <Plus class="h-4 w-4" />
