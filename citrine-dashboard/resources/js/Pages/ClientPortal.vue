@@ -807,7 +807,8 @@ import {
   LayoutDashboard, MapPin, Car, History, Wallet as WalletIcon, Star, 
   Bell, Plus, Map as MapIcon, Calendar, Play, Power, 
   Download, Filter, FileText, Trash, Star as StarIcon,
-  CheckCircle, AlertCircle, Info, Clock, Square, User
+  CheckCircle, AlertCircle, Info, Clock, Square, User,
+  CreditCard, BellOff
 } from 'lucide-vue-next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
