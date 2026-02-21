@@ -44,15 +44,15 @@ services:
       AWS_S3_ENDPOINT: http://minio:9000
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      DB_HOST: ocpp-db
-      DB_PORT: 5432
-      DB_DATABASE: citrine
-      DB_USERNAME: citrine
-      DB_PASSWORD: citrine
-      AMQP_HOST: amqp-broker
-      AMQP_PORT: 5672
-      AMQP_USER: guest
-      AMQP_PASSWORD: guest
+      BOOTSTRAP_CITRINEOS_DATABASE_HOST: ocpp-db
+      BOOTSTRAP_CITRINEOS_DATABASE_PORT: 5432
+      BOOTSTRAP_CITRINEOS_DATABASE_NAME: citrine
+      BOOTSTRAP_CITRINEOS_DATABASE_USERNAME: citrine
+      BOOTSTRAP_CITRINEOS_DATABASE_PASSWORD: citrine
+      BOOTSTRAP_CITRINEOS_AMQP_HOST: amqp-broker
+      BOOTSTRAP_CITRINEOS_AMQP_PORT: 5672
+      BOOTSTRAP_CITRINEOS_AMQP_USER: guest
+      BOOTSTRAP_CITRINEOS_AMQP_PASS: guest
     depends_on:
       ocpp-db:
         condition: service_healthy
