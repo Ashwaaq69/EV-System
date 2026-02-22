@@ -31,10 +31,12 @@ class DashboardController extends Controller
             $isOnline = in_array($cp->status, ['Available', 'Charging']);
             
             return [
-                'id'       => $cp->identifier,
+                'id'       => $cp->id, // Use database ID for management
+                'identifier' => $cp->identifier,
                 'name'     => $cp->identifier,
                 'location' => $cp->location ? $cp->location->name : 'N/A',
                 'online'   => $isOnline,
+                'status'   => $cp->status,
             ];
         });
 
@@ -87,5 +89,44 @@ class DashboardController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Charger added successfully.');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'identifier' => 'required|string|max:255|unique:charge_points,identifier,' . $id,
+            'location_name' => 'required|string|max:255',
+        ]);
+
+        $cp = ChargePoint::findOrFail($id);
+        
+        $location = \App\Models\Location::firstOrCreate(['name' => $validated['location_name']]);
+
+        $cp->update([
+            'identifier' => $validated['identifier'],
+            'location_id' => $location->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Charger updated successfully.');
+    }
+
+    public function destroy($id)
+    {
+        $cp = ChargePoint::findOrFail($id);
+        $cp->delete();
+
+        return redirect()->back()->with('success', 'Charger deleted successfully.');
+    }
+
+    public function toggleStatus($id)
+    {
+        $cp = ChargePoint::findOrFail($id);
+        
+        // Simple toggle between Available and Unavailable
+        $newStatus = ($cp->status === 'Unavailable') ? 'Available' : 'Unavailable';
+        
+        $cp->update(['status' => $newStatus]);
+
+        return redirect()->back()->with('success', 'Charger status updated.');
     }
 }

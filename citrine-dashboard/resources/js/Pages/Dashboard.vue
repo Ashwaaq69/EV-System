@@ -261,14 +261,25 @@
                   </TableCell>
                   <TableCell class="text-zinc-500">{{ charger.location }}</TableCell>
                   <TableCell>
-                    <Badge :variant="charger.online ? 'default' : 'secondary'" :class="charger.online ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''">
-                      {{ charger.online ? 'Active' : 'Offline' }}
+                    <Badge 
+                      :variant="charger.online ? 'default' : 'secondary'" 
+                      class="cursor-pointer transition-all hover:scale-105"
+                      :class="charger.online ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'"
+                      @click="toggleStatus(charger.id)"
+                      :title="`Click to ${charger.status === 'Unavailable' ? 'Activate' : 'Deactivate'}`"
+                    >
+                      {{ charger.online ? 'Active' : 'Inactive' }}
                     </Badge>
                   </TableCell>
                   <TableCell class="text-right">
-                    <Button variant="ghost" size="sm" class="opacity-0 group-hover:opacity-100 transition-opacity">
-                      Manage
-                    </Button>
+                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-zinc-500 hover:text-zinc-900" @click="openEditModal(charger)">
+                        <Edit class="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" class="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" @click="deleteCharger(charger)">
+                        <Trash2 class="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="chargers.data.length === 0">
@@ -518,8 +529,43 @@
         </Card>
       </div>
 
-      </div>
-    </AppLayout>
+      <Dialog v-model:open="isEditModalOpen">
+        <DialogContent class="sm:max-w-[425px] dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle>Edit Charger</DialogTitle>
+            <DialogDescription>
+              Update information for this charge point.
+            </DialogDescription>
+          </DialogHeader>
+          <form @submit.prevent="updateCharger" class="grid gap-6 py-4">
+            <div class="grid gap-2">
+              <Label for="edit_identifier" class="text-xs font-bold uppercase tracking-wider text-zinc-500">Charger Identifier</Label>
+              <Input
+                id="edit_identifier"
+                v-model="editForm.identifier"
+                class="dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 font-medium"
+              />
+              <p v-if="editForm.errors.identifier" class="text-xs text-red-500 font-medium italic">{{ editForm.errors.identifier }}</p>
+            </div>
+            <div class="grid gap-2">
+              <Label for="edit_location" class="text-xs font-bold uppercase tracking-wider text-zinc-500">Location Name</Label>
+              <Input
+                id="edit_location"
+                v-model="editForm.location_name"
+                class="dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 font-medium"
+              />
+              <p v-if="editForm.errors.location_name" class="text-xs text-red-500 font-medium italic">{{ editForm.errors.location_name }}</p>
+            </div>
+            <DialogFooter class="mt-4">
+              <Button type="submit" :disabled="editForm.processing" class="bg-[#FF2D20] hover:bg-[#E0261B] text-white border-none w-full shadow-lg shadow-red-200 dark:shadow-none">
+                {{ editForm.processing ? 'Updating...' : 'Update Details' }}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup>
@@ -551,7 +597,9 @@ import {
   BatteryCharging,
   Leaf,
   BarChart3,
-  Search
+  Search,
+  Edit,
+  Trash2
 } from 'lucide-vue-next';
 import { Bar, Line } from 'vue-chartjs';
 import { 
@@ -612,6 +660,39 @@ const submitForm = () => {
       form.reset();
     },
   });
+};
+
+const isEditModalOpen = ref(false);
+const editChargerId = ref(null);
+const editForm = useForm({
+  identifier: '',
+  location_name: '',
+});
+
+const openEditModal = (charger) => {
+  editChargerId.value = charger.id;
+  editForm.identifier = charger.identifier;
+  editForm.location_name = charger.location;
+  isEditModalOpen.value = true;
+};
+
+const updateCharger = () => {
+  editForm.patch(route('chargers.update', editChargerId.value), {
+    onSuccess: () => {
+      isEditModalOpen.value = false;
+      editForm.reset();
+    },
+  });
+};
+
+const deleteCharger = (charger) => {
+  if (confirm(`Are you sure you want to delete charger ${charger.identifier}?`)) {
+    router.delete(route('chargers.destroy', charger.id));
+  }
+};
+
+const toggleStatus = (id) => {
+  router.patch(route('chargers.toggle-status', id), {}, { preserveScroll: true });
 };
 
 const searchQuery = ref(new URLSearchParams(window.location.search).get('search') || '');

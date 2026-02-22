@@ -121,8 +121,8 @@ services:
       - 8090:8080
     restart: always
     depends_on:
-      citrine:
-        condition: service_started
+      ocpp-db:
+        condition: service_healthy
     environment:
       HASURA_GRAPHQL_DATABASE_URL: postgres://citrine:citrine@ocpp-db:5432/citrine
       HASURA_GRAPHQL_ENABLE_CONSOLE: 'true'
@@ -141,12 +141,16 @@ services:
     build:
       context: ./citrine-dashboard
       dockerfile: Dockerfile
+    volumes:
+      - ./citrine-dashboard:/var/www
+      - /var/www/vendor
+      - /var/www/node_modules
     ports:
       - "8181:8000"
     environment:
       - APP_ENV=docker
       - APP_KEY=base64:8TkVpFuY8n4cBOw94S3seyF7NShADWEFr6AH0OYfs2Y=
-      - APP_URL=http://evcharge.xperts.my
+      - APP_URL=http://localhost:8181
       - FORCE_HTTPS=false
       - APP_DEBUG=true
       - DB_CONNECTION=pgsql
@@ -157,8 +161,18 @@ services:
       - DB_PASSWORD=citrine
       - VITE_CITRINE_CORE_URL=http://citrine:8080
       - NEXT_PUBLIC_CITRINE_CORE_URL=http://citrine:8080
+      - SESSION_SECURE_COOKIE=false
+      - SESSION_DOMAIN=null
+      - SESSION_DRIVER=file
+      - SESSION_LIFETIME=10080
     depends_on:
       ocpp-db:
         condition: service_healthy
       citrine:
         condition: service_started
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8085:8080

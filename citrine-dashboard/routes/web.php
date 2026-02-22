@@ -36,6 +36,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/transactions/{id}/stop', [TransactionController::class, 'stopSession'])->name('transactions.stop');
         Route::get('/transactions/{id}/invoice', [TransactionController::class, 'downloadInvoice'])->name('transactions.invoice');
         
+        // Charger Management
+        Route::patch('/dashboard/chargers/{id}', [DashboardController::class, 'update'])->name('chargers.update');
+        Route::delete('/dashboard/chargers/{id}', [DashboardController::class, 'destroy'])->name('chargers.destroy');
+        Route::patch('/dashboard/chargers/{id}/toggle-status', [DashboardController::class, 'toggleStatus'])->name('chargers.toggle-status');
+        
         // Analytics API
         Route::get('/api/admin/analytics', [DashboardAnalyticsController::class, 'index'])->name('admin.analytics');
         
