@@ -20,19 +20,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // UNCONDITIONAL Brute-force HTTPS for production proxy
-        \Illuminate\Support\Facades\URL::forceScheme('https');
-        if (config('app.url')) {
-            \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
+        if (config('app.env') === 'production' && env('FORCE_HTTPS') === true) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
         }
-
-        // Force server variables for proxy-to-container HTTPS termination
-        $this->app['request']->server->set('HTTPS', 'on');
-        $this->app['request']->server->set('SERVER_PORT', 443);
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['SERVER_PORT'] = 443;
         
-        // Disabled prefetching to prevent Mixed Content errors
+        // Disabled prefetching to prevent Mixed Content errors on production prefetch resources
         // Vite::prefetch(concurrency: 3);
     }
 }

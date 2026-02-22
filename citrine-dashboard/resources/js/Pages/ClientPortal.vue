@@ -435,7 +435,7 @@
                      Payment Methods
                    </h3>
                    <Button size="sm" variant="outline" class="h-7 text-xs gap-1" @click="openAddCardModal">
-                      <Plus class="h-3 w-3" /> Add Card
+                     <Plus class="h-3 w-3" /> Add Card
                    </Button>
                  </div>
                  <div v-if="savedCards.length > 0" class="space-y-2">
