@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="p-8 max-w-7xl mx-auto space-y-8">
+    <div class="px-4 py-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
       <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Dashboard Overview</h1>
@@ -59,7 +59,7 @@
       </header>
 
       <!-- Stats Cards -->
-      <section class="grid grid-cols-1 gap-6 md:grid-cols-4">
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <Card class="relative overflow-hidden group hover:shadow-md transition-shadow">
           <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle class="text-sm font-medium text-zinc-500">Online Units</CardTitle>
@@ -143,7 +143,7 @@
               Refresh
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent class="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -210,10 +210,10 @@
 
 
       <!-- Main Layout (Chargers & Sidebar) -->
-      <div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-4">
         <!-- Chargers List (Stations) -->
         <Card class="lg:col-span-3 border-none shadow-sm shadow-zinc-200 dark:shadow-none bg-white dark:bg-zinc-900">
-          <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardHeader class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
             <div>
               <CardTitle>Charger Status</CardTitle>
               <CardDescription>Network-wide station health and availability</CardDescription>
@@ -241,7 +241,7 @@
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent class="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow class="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
@@ -495,7 +495,7 @@
           <CardHeader>
             <CardTitle class="text-xs font-bold uppercase tracking-widest text-zinc-500">Profitability by Location</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent class="overflow-x-auto">
             <Table v-if="analyticsFetched">
               <TableHeader>
                 <TableRow class="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
