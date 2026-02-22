@@ -1440,6 +1440,28 @@ const showReceipt = (session) => {
 };
 
 // Map logic
+function getMarkerColor(status) {
+  if (status === 'Available') return '#22c55e';  // green-500
+  if (status === 'Charging')  return '#f97316';  // orange-500
+  return '#ef4444';                               // red-500  (Unavailable / Offline)
+}
+
+function createStationIcon(L, status) {
+  const color = getMarkerColor(status);
+  const html = `
+    <div style="
+      width: 28px; height: 28px;
+      background: ${color};
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+    ">
+      <div style="width:8px;height:8px;background:white;border-radius:50%;"></div>
+    </div>`;
+  return L.divIcon({ html, className: '', iconSize: [28, 28], iconAnchor: [14, 14], tooltipAnchor: [16, 0] });
+}
+
 function initMap() {
   if (leafletMap) {
     mapLoading.value = false;
@@ -1454,12 +1476,6 @@ function initMap() {
     }
     import('leaflet').then((L) => {
       L = L.default;
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
       try {
         leafletMap = L.map(mapRef.value).setView([3.1579, 101.7116], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1468,10 +1484,14 @@ function initMap() {
         stations.value
           .filter((s) => s.lat != null && s.lng != null)
           .forEach((station) => {
-            const marker = L.marker([station.lat, station.lng])
+            const icon = createStationIcon(L, station.status);
+            const marker = L.marker([station.lat, station.lng], { icon })
               .addTo(leafletMap)
               .on('click', () => { selectedStation.value = station; });
-            marker.bindTooltip(station.name, { permanent: false, direction: 'top' });
+            marker.bindTooltip(
+              `<strong>${station.name}</strong><br><span style="color:${getMarkerColor(station.status)}">${station.status}</span>`,
+              { permanent: false, direction: 'top' }
+            );
             leafletMarkers.push(marker);
           });
         setTimeout(() => { leafletMap.invalidateSize(); }, 100);
@@ -1480,7 +1500,7 @@ function initMap() {
         mapError.value = true;
         mapLoading.value = false;
       }
-    }).catch((err) => {
+    }).catch(() => {
       mapError.value = true;
       mapLoading.value = false;
     });
