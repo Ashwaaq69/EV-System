@@ -38,8 +38,31 @@
         </nav>
       </div>
 
-      <div class="p-4 bg-zinc-50/50 dark:bg-zinc-800/20" v-if="$page.props.auth.user">
-        <UserFooter :user="$page.props.auth.user" :isDark="isDark" @toggleDark="toggleDark" @logout="handleLogout" />
+      <!-- User Footer -->
+      <div class="p-4 border-t border-zinc-100 dark:border-zinc-800" v-if="$page.props.auth.user">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <Avatar class="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
+              <AvatarImage :src="`https://avatar.vercel.sh/${$page.props.auth.user.email}.png`" />
+              <AvatarFallback class="bg-[#FF2D20] text-white font-bold text-xs">
+                {{ $page.props.auth.user.name?.charAt(0) || 'U' }}
+              </AvatarFallback>
+            </Avatar>
+            <div class="text-xs">
+              <p class="font-semibold text-zinc-900 dark:text-white truncate max-w-[100px]">{{ $page.props.auth.user.name }}</p>
+              <p class="text-zinc-500 dark:text-zinc-400 truncate max-w-[100px]">{{ $page.props.auth.user.email }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button @click="toggleDark" class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all">
+              <Moon v-if="!isDark" class="h-4 w-4" />
+              <Sun v-else class="h-4 w-4" />
+            </button>
+            <button @click="handleLogout" class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-[#FF2D20] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all" title="Logout">
+              <LogOut class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -85,8 +108,31 @@
           </nav>
         </div>
 
+        <!-- User Footer -->
         <div class="p-4 border-t border-zinc-100 dark:border-zinc-800" v-if="$page.props.auth.user">
-          <UserFooter :user="$page.props.auth.user" :isDark="isDark" @toggleDark="toggleDark" @logout="handleLogout" />
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <Avatar class="h-9 w-9 border border-zinc-200 dark:border-zinc-800">
+                <AvatarImage :src="`https://avatar.vercel.sh/${$page.props.auth.user.email}.png`" />
+                <AvatarFallback class="bg-[#FF2D20] text-white font-bold text-xs">
+                  {{ $page.props.auth.user.name?.charAt(0) || 'U' }}
+                </AvatarFallback>
+              </Avatar>
+              <div class="text-xs">
+                <p class="font-semibold text-zinc-900 dark:text-white truncate max-w-[100px]">{{ $page.props.auth.user.name }}</p>
+                <p class="text-zinc-500 dark:text-zinc-400 truncate max-w-[100px]">{{ $page.props.auth.user.email }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button @click="toggleDark" class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-all">
+                <Moon v-if="!isDark" class="h-4 w-4" />
+                <Sun v-else class="h-4 w-4" />
+              </button>
+              <button @click="handleLogout" class="h-8 w-8 flex items-center justify-center text-zinc-400 hover:text-[#FF2D20] hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all" title="Logout">
+                <LogOut class="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
     </Transition>
