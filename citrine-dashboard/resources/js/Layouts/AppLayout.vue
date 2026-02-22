@@ -33,8 +33,32 @@
       <div class="px-3 py-2 flex-1 overflow-y-auto">
         <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-3 mb-2">Main Menu</p>
         <nav class="space-y-1">
-          <!-- Navigation Content (Shared) -->
-          <NavLinks :url="$page.url" :role="$page.props.auth?.user?.role" @navigate="navigateTo" />
+          <!-- Admin Links -->
+          <template v-if="$page.props.auth?.user?.role === 'admin'">
+            <Link href="/dashboard" @click="navigateTo($event, '/dashboard')" :class="['group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200', $page.url === '/dashboard' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+              <Zap class="mr-3 h-4 w-4" :class="$page.url === '/dashboard' ? 'text-[#FF2D20]' : ''" />
+              Chargers
+            </Link>
+            <Link href="/analytics" @click="navigateTo($event, '/analytics')" :class="['group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200', $page.url === '/analytics' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+              <BarChart3 class="mr-3 h-4 w-4" :class="$page.url === '/analytics' ? 'text-[#FF2D20]' : ''" />
+              Analytics
+            </Link>
+            <Link href="/transactions" @click="navigateTo($event, '/transactions')" :class="['group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200', $page.url === '/transactions' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+              <ClipboardList class="mr-3 h-4 w-4" :class="$page.url === '/transactions' ? 'text-[#FF2D20]' : ''" />
+              Transactions
+            </Link>
+            <Link href="/users" @click="navigateTo($event, '/users')" :class="['group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200', $page.url === '/users' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+              <Users class="mr-3 h-4 w-4" :class="$page.url === '/users' ? 'text-[#FF2D20]' : ''" />
+              Users
+            </Link>
+          </template>
+          <!-- Client Links -->
+          <template v-else>
+            <Link href="/client/portal" @click="navigateTo($event, '/client/portal')" :class="['group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200', $page.url === '/client/portal' || $page.url === '/' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+              <Zap class="mr-3 h-4 w-4" :class="$page.url === '/client/portal' ? 'text-[#FF2D20]' : ''" />
+              My Portal
+            </Link>
+          </template>
         </nav>
       </div>
 
@@ -104,7 +128,32 @@
         <div class="px-3 py-6 flex-1 overflow-y-auto">
           <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 px-3 mb-4">Main Menu</p>
           <nav class="space-y-2">
-            <NavLinks :url="$page.url" :role="$page.props.auth?.user?.role" @navigate="(e, href) => { isMobileMenuOpen = false; navigateTo(e, href); }" />
+            <!-- Admin Links -->
+            <template v-if="$page.props.auth?.user?.role === 'admin'">
+              <Link href="/dashboard" @click="isMobileMenuOpen = false; navigateTo($event, '/dashboard')" :class="['group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200', $page.url === '/dashboard' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+                <Zap class="mr-3 h-4 w-4" :class="$page.url === '/dashboard' ? 'text-[#FF2D20]' : ''" />
+                Chargers
+              </Link>
+              <Link href="/analytics" @click="isMobileMenuOpen = false; navigateTo($event, '/analytics')" :class="['group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200', $page.url === '/analytics' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+                <BarChart3 class="mr-3 h-4 w-4" :class="$page.url === '/analytics' ? 'text-[#FF2D20]' : ''" />
+                Analytics
+              </Link>
+              <Link href="/transactions" @click="isMobileMenuOpen = false; navigateTo($event, '/transactions')" :class="['group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200', $page.url === '/transactions' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+                <ClipboardList class="mr-3 h-4 w-4" :class="$page.url === '/transactions' ? 'text-[#FF2D20]' : ''" />
+                Transactions
+              </Link>
+              <Link href="/users" @click="isMobileMenuOpen = false; navigateTo($event, '/users')" :class="['group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200', $page.url === '/users' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+                <Users class="mr-3 h-4 w-4" :class="$page.url === '/users' ? 'text-[#FF2D20]' : ''" />
+                Users
+              </Link>
+            </template>
+            <!-- Client Links -->
+            <template v-else>
+              <Link href="/client/portal" @click="isMobileMenuOpen = false; navigateTo($event, '/client/portal')" :class="['group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200', $page.url === '/client/portal' || $page.url === '/' ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white']">
+                <Zap class="mr-3 h-4 w-4" :class="$page.url === '/client/portal' ? 'text-[#FF2D20]' : ''" />
+                My Portal
+              </Link>
+            </template>
           </nav>
         </div>
 
